@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#66B6FF">
+  <title>小满</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css?v=7">
+</head>
+<body>
+  <!-- 梦幻背景装饰 -->
+  <div id="bg-decor">
+    <div class="bubble b1"></div>
+    <div class="bubble b2"></div>
+    <div class="bubble b3"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+    <div class="cloud c3"></div>
+    <div class="star s1"></div>
+    <div class="star s2"></div>
+    <div class="star s3"></div>
+    <div class="star s4"></div>
+  </div>
+
+  <!-- 顶部状态栏 -->
+  <header id="topbar">
+    <button id="menu-toggle" aria-label="菜单">☰</button>
+    <div id="tb-profile">
+      <div id="tb-avatar">我</div>
+      <span id="tb-name">我</span>
+    </div>
+    <div id="tb-center">
+      <div id="tb-date"></div>
+      <div id="tb-quote"></div>
+    </div>
+    <div id="tb-right">
+      <div id="tb-weather">🌡️ —</div>
+      <div id="tb-event" title="最近纪念日/生日"></div>
+      <select id="tb-status" title="今日状态"></select>
+      <button id="tb-quote-refresh" title="换一句">🔄</button>
+      <div id="tb-stock"></div>
+      <button id="tb-gear" title="设置与备份">⚙</button>
+    </div>
+  </header>
+
+  <div id="layout">
+    <aside id="sidebar">
+      <div class="drawer-head">
+        <span class="dh-title">🌈 小满</span>
+        <button id="drawer-close" aria-label="关闭">×</button>
+      </div>
+      <nav id="sidebar-nav"></nav>
+    </aside>
+    <main id="content">
+      <h1 id="content-title">首页</h1>
+      <div id="content-body"></div>
+    </main>
+  </div>
+
+  <div id="backdrop"></div>
+
+  <!-- 弹窗 -->
+  <div id="modal">
+    <div id="modal-box">
+      <div id="modal-head">
+        <h3 id="modal-title"></h3>
+        <button id="modal-close" aria-label="关闭">×</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=7"></script>
+  <script src="js/store.js?v=7"></script>
+  <script src="js/topbar.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      Topbar.init();
+      App.init();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js?v=7').catch(function () {});
+      }
+    });
+  </script>
+</body>
+</html>
