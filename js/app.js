@@ -57,6 +57,13 @@ const App = (function () {
   function populateList(mod) {
     const tab = mod.tabs.find(t => t.id === state.tab);
     if (!tab) return;
+    const special = getSpecialRenderer(mod.id, tab.id);
+    if (special) {
+      const container = document.getElementById('tab-body');
+      if (container) container.innerHTML = special(tab);
+      bindSpecial(mod.id, tab);
+      return;
+    }
     if (tab.type === 'list') {
       renderList(tab);
       const add = document.getElementById('add-btn');
@@ -64,17 +71,37 @@ const App = (function () {
     }
   }
 
-  /* ---------------- 顶部 Tab 栏 ---------------- */
+  /* ---------------- 模块头部 + Tab 栏 ---------------- */
   function renderTabs(mod) {
     const tabs = mod.tabs.map(t =>
       `<button class="tab-btn ${t.id === state.tab ? 'active' : ''} group-${mod.group}" data-tab="${t.id}">${esc(t.name)}</button>`
     ).join('');
     const tab = mod.tabs.find(t => t.id === state.tab) || mod.tabs[0];
-    return `<div class="tab-bar">${tabs}</div><div id="tab-body">${renderTabBody(tab)}</div>`;
+    return `
+      <div class="mod-header">
+        <button class="mod-header-back" data-goto="home">←</button>
+        <div class="mod-header-info">
+          <h2>${esc(mod.icon + ' ' + mod.name)}</h2>
+          <p>${esc(mod.desc || '')}</p>
+        </div>
+        <div class="mod-actions">
+          <button id="add-btn" title="新增">+</button>
+          <button id="mod-settings" title="设置">⚙</button>
+        </div>
+      </div>
+      <div class="tab-bar">${tabs}</div>
+      <div id="tab-body">${renderTabBody(tab)}</div>`;
   }
   function bindTabs(root, mod) {
     root.querySelectorAll('.tab-btn').forEach(b =>
       b.onclick = () => { selectTab(b.dataset.tab); renderContent(); });
+    root.querySelectorAll('[data-goto="home"]').forEach(b =>
+      b.onclick = () => selectModule('home'));
+    const add = document.getElementById('add-btn');
+    const tab = mod.tabs.find(t => t.id === state.tab);
+    if (add && tab) add.onclick = () => openForm(tab, null);
+    const set = document.getElementById('mod-settings');
+    if (set) set.onclick = openSettings;
   }
 
   /* ---------------- 单个 Tab 内容 ---------------- */
@@ -234,6 +261,308 @@ const App = (function () {
     return `<div class="gallery"><h4>运动对比照</h4><div class="gallery-grid">` +
       list.map(r => `<figure><img src="${esc(r.photo)}"><figcaption>${esc(r.date)} · ${esc(r.item)}</figcaption></figure>`).join('') +
       `</div></div>`;
+  }
+
+  /* ---------------- App 风格特殊模块渲染 ---------------- */
+  function getSpecialRenderer(modId, tabId) {
+    if (modId === 'shopping' && tabId === 'items') return renderShopping;
+    if (modId === 'study' && tabId === 'courses') return renderStudy;
+    if (modId === 'travel' && tabId === 'destinations') return renderTravelDestinations;
+    if (modId === 'travel' && tabId === 'plans') return renderTravelPlans;
+    if (modId === 'fitness' && tabId === 'daily') return renderFitnessDaily;
+    if (modId === 'rigong' && tabId === 'studylog') return renderRigongHeatmap;
+    if (modId === 'money' && tabId === 'flows') return renderMoney;
+    if (modId === 'jikui' && tabId === 'todos') return renderJikuiTodos;
+    if (modId === 'fun' && tabId === 'items') return renderFunList;
+    return null;
+  }
+  function bindSpecial(modId, tab) {
+    const root = document.getElementById('tab-body');
+    if (!root) return;
+    root.querySelectorAll('[data-edit]').forEach(b =>
+      b.onclick = () => openForm(tab, b.dataset.edit));
+    root.querySelectorAll('[data-del]').forEach(b =>
+      b.onclick = () => { if (confirm('确定删除这条记录？')) { Store.deleteRecord(tab.id, b.dataset.del); Topbar.renderEvents(); renderContent(); } });
+    root.querySelectorAll('[data-toggle]').forEach(b =>
+      b.onchange = () => {
+        const rec = Store.getList(tab.id).find(r => r._id === b.dataset.toggle);
+        if (rec) {
+          const key = b.dataset.key;
+          if (key === 'status') rec[key] = b.checked ? '完成' : '待办';
+          else if (key === 'done') rec[key] = b.checked;
+          else rec[key] = b.checked;
+          Store.updateRecord(tab.id, rec._id, rec);
+          Topbar.renderEvents();
+          renderContent();
+        }
+      });
+    const addBtn = document.getElementById('add-btn') || document.getElementById('special-add');
+    if (addBtn) addBtn.onclick = () => openForm(tab, null);
+    const addBar = document.getElementById('quick-add-bar');
+    if (addBar) addBar.onkeydown = e => {
+      if (e.key === 'Enter') {
+        const input = document.getElementById('quick-add-input');
+        if (!input || !input.value.trim()) return;
+        const obj = {};
+        tab.fields.forEach(f => { obj[f.key] = f.def != null ? f.def : (f.type === 'checkbox' ? false : ''); });
+        obj[tab.fields.find(f => f.required)?.key || tab.fields[0].key] = input.value.trim();
+        Store.addRecord(tab.id, obj);
+        input.value = '';
+        Topbar.renderEvents();
+        renderContent();
+      }
+    };
+  }
+
+  function heatmapHtml(dates, valueKey, colorClass) {
+    const map = {};
+    (dates || []).forEach(d => { if (d.date) map[d.date] = (map[d.date] || 0) + (parseFloat(d[valueKey]) || 1); });
+    const max = Math.max(1, ...Object.values(map));
+    const today = new Date(); const dayMs = 86400000;
+    let html = `<div class="habit-heatmap ${esc(colorClass || '')}">`;
+    for (let w = 0; w < 14; w++) {
+      for (let d = 0; d < 7; d++) {
+        const offset = (13 - w) * 7 + (6 - d);
+        const dt = new Date(today.getTime() - offset * dayMs);
+        const key = dt.toISOString().slice(0, 10);
+        const val = map[key] || 0;
+        let level = 0;
+        if (val > 0) level = Math.min(4, Math.ceil((val / max) * 4));
+        html += `<div class="habit-day l${level}" title="${key}: ${val}"></div>`;
+      }
+    }
+    return html + `</div>`;
+  }
+
+  function renderShopping(tab) {
+    const items = Store.getList(tab.id);
+    const total = items.length;
+    const bought = items.filter(r => r.done === '已买').length;
+    const spent = items.reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseFloat(it.qty) || 1), 0);
+    const target = Store.getSetting('budgetTarget', 0);
+    const pct = target > 0 ? Math.min(100, (spent / target) * 100) : 0;
+    const completePct = total ? Math.round((bought / total) * 100) : 0;
+    const cats = {};
+    items.forEach(it => { const c = it.cat || '其他'; (cats[c] = cats[c] || []).push(it); });
+    let groups = '';
+    Object.entries(cats).forEach(([cat, list]) => {
+      groups += `<div class="shop-group">
+        <div class="shop-group-head">${esc(cat)} <span style="margin-left:auto;color:var(--text-3);font-size:12px;font-weight:500;">${list.filter(r => r.done === '已买').length}/${list.length}</span></div>
+        ${list.map(it => `
+          <div class="shop-item">
+            <input type="checkbox" data-toggle="${it._id}" data-key="done" ${it.done === '已买' ? 'checked' : ''}>
+            <span class="shop-item-name" style="${it.done === '已买' ? 'text-decoration:line-through;opacity:.55;' : ''}">${esc(it.name)}</span>
+            ${it.price ? `<span class="shop-item-price">€${parseFloat(it.price).toFixed(0)}</span>` : ''}
+            <button class="shop-item-del" data-del="${it._id}">×</button>
+          </div>`).join('')}
+      </div>`;
+    });
+    const empty = !items.length ? `<div class="empty-state"><div class="empty-state-icon">🛒</div><div class="empty-state-text">还没有购物记录，点击右上角 + 添加</div></div>` : '';
+    return `
+      <div class="shop-progress">
+        <div class="shop-progress-row">
+          <div><div class="shop-progress-big">${completePct}%<small>完成进度</small></div></div>
+          <div><div class="shop-progress-big">€${spent.toFixed(0)}<small>已花 / 预算 €${target || 0}</small></div></div>
+        </div>
+        <div class="shop-budget-bar"><div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
+        <div class="shop-budget-info"><span>已买 ${bought}/${total}</span><span>${target > 0 ? '剩余 €' + (target - spent).toFixed(0) : '未设预算'}</span></div></div>
+      </div>
+      ${empty}
+      ${groups}`;
+  }
+
+  function renderStudy(tab) {
+    const courses = Store.getList('courses');
+    const logs = Store.getList('studylog');
+    const total = courses.length;
+    const active = courses.filter(r => r.status === '进行').length;
+    const done = courses.filter(r => r.status === '完成').length;
+    const avg = total ? Math.round(courses.reduce((s, r) => s + (parseFloat(r.progress) || 0), 0) / total) : 0;
+    const stats = `<div class="stat-row">
+      <div class="stat-card group-work"><div class="stat-value">${total}</div><div class="stat-label">课程总数</div></div>
+      <div class="stat-card group-work"><div class="stat-value">${active}</div><div class="stat-label">进行中</div></div>
+      <div class="stat-card group-work"><div class="stat-value">${done}</div><div class="stat-label">已完成</div></div>
+      <div class="stat-card group-work"><div class="stat-value">${avg}%</div><div class="stat-label">平均进度</div></div>
+    </div>`;
+    if (!courses.length && !logs.length) return stats + `<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">还没有学习记录，点击右上角 + 添加</div></div>`;
+    let cards = `<div style="margin-bottom:14px;"><div class="section-title" style="font-size:14px;">📅 学习热力图</div><div class="habit-section">${heatmapHtml(logs, 'duration', '')}</div></div>`;
+    if (courses.length) {
+      cards += `<div style="margin-bottom:14px;"><div class="section-title" style="font-size:14px;">📖 我的课程</div>`;
+      cards += courses.map(c => {
+        const p = Math.max(0, Math.min(100, parseFloat(c.progress) || 0));
+        return `<div class="app-card">
+          <div class="app-card-head">
+            <span class="app-card-title">${esc(c.name)}</span>
+            <span class="app-card-ops">
+              <button data-edit="${c._id}">编辑</button>
+              <button class="danger" data-del="${c._id}">删</button>
+            </span>
+          </div>
+          <div class="app-card-body">
+            <div class="mini-progress" style="margin:8px 0;"><i style="width:${p}%"></i></div>
+            <p>进度 ${p}% · ${esc(c.status)} ${c.due ? '· 截止 ' + c.due : ''}</p>
+          </div>
+        </div>`;
+      }).join('');
+      cards += `</div>`;
+    }
+    return stats + cards;
+  }
+
+  function renderTravelDestinations(tab) {
+    const list = Store.getList('destinations');
+    if (!list.length) return `<div class="empty-state"><div class="empty-state-icon">✈️</div><div class="empty-state-text">还没有想去的地方，点击右上角 + 添加</div></div>`;
+    return list.map(r => `<div class="travel-card">
+      <div class="travel-card-head">
+        <div><div class="travel-city">${esc(r.city)}</div></div>
+        <span class="travel-status">${esc(r.want)}</span>
+      </div>
+      <div class="travel-details">
+        ${r.rating ? `<div class="travel-detail"><span class="travel-detail-icon">⭐</span><span class="travel-detail-label">想去指数</span><span class="travel-detail-value">${r.rating}</span></div>` : ''}
+        ${r.note ? `<div class="travel-detail"><span class="travel-detail-icon">📝</span><span class="travel-detail-label">备注</span><span class="travel-detail-value">${esc(r.note)}</span></div>` : ''}
+      </div>
+      <div class="app-card-ops" style="margin-top:10px;justify-content:flex-end;">
+        <button data-edit="${r._id}">编辑</button>
+        <button class="danger" data-del="${r._id}">删</button>
+      </div>
+    </div>`).join('');
+  }
+
+  function renderTravelPlans(tab) {
+    const list = Store.getList('plans');
+    if (!list.length) return `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行计划</div></div>`;
+    return list.map(r => `<div class="travel-card">
+      <div class="travel-card-head">
+        <div><div class="travel-city">${esc(r.name)}</div><div style="font-size:12px;color:var(--text-3);">${esc(r.place || '')}</div></div>
+        <span class="travel-status">${esc(r.status)}</span>
+      </div>
+      <div class="travel-details">
+        ${r.date ? `<div class="travel-detail"><span class="travel-detail-icon">📅</span><span class="travel-detail-label">日期</span><span class="travel-detail-value">${r.date}</span></div>` : ''}
+        ${r.transport ? `<div class="travel-detail"><span class="travel-detail-icon">🚆</span><span class="travel-detail-label">交通</span><span class="travel-detail-value">${esc(r.transport)}</span></div>` : ''}
+        ${r.hotel ? `<div class="travel-detail"><span class="travel-detail-icon">🏨</span><span class="travel-detail-label">住宿</span><span class="travel-detail-value">${esc(r.hotel)}</span></div>` : ''}
+        ${r.budget ? `<div class="travel-detail"><span class="travel-detail-icon">💰</span><span class="travel-detail-label">预算</span><span class="travel-detail-value">€${parseFloat(r.budget).toFixed(0)}</span></div>` : ''}
+      </div>
+      <div class="app-card-ops" style="margin-top:10px;justify-content:flex-end;">
+        <button data-edit="${r._id}">编辑</button>
+        <button class="danger" data-del="${r._id}">删</button>
+      </div>
+    </div>`).join('');
+  }
+
+  function renderFitnessDaily(tab) {
+    const list = Store.getList('daily');
+    const totalMin = list.reduce((s, r) => s + (parseFloat(r.duration) || 0), 0);
+    const completed = list.filter(r => r.done).length;
+    const stats = `<div class="stat-row">
+      <div class="stat-card group-life"><div class="stat-value">${list.length}</div><div class="stat-label">今日项目</div></div>
+      <div class="stat-card group-life"><div class="stat-value">${Math.round(totalMin)}</div><div class="stat-label">分钟</div></div>
+      <div class="stat-card group-life"><div class="stat-value">${completed}</div><div class="stat-label">已完成</div></div>
+    </div>`;
+    if (!list.length) return stats + `<div class="empty-state"><div class="empty-state-icon">🏃</div><div class="empty-state-text">还没有运动项目，点击右上角 + 添加</div></div>`;
+    const items = list.map(r => `<div class="todo-item">
+      <input type="checkbox" class="todo-check" data-toggle="${r._id}" data-key="done" ${r.done ? 'checked' : ''}>
+      <div class="todo-main">
+        <div class="todo-title" style="${r.done ? 'text-decoration:line-through;opacity:.55;' : ''}">${esc(r.item)}</div>
+        <div class="todo-meta">${r.duration || 0} 分钟 · ${r.calories || 0} kcal</div>
+      </div>
+      <button class="shop-item-del" data-del="${r._id}">×</button>
+    </div>`).join('');
+    return stats + `<div class="todo-list">${items}</div>`;
+  }
+
+  function renderRigongHeatmap(tab) {
+    const logs = Store.getList('studylog');
+    const books = Store.getList('books');
+    const totalMin = logs.reduce((s, r) => s + (parseFloat(r.duration) || 0), 0);
+    const stats = `<div class="stat-row">
+      <div class="stat-card group-work"><div class="stat-value">${logs.length}</div><div class="stat-label">学习次数</div></div>
+      <div class="stat-card group-work"><div class="stat-value">${Math.round(totalMin / 60 * 10) / 10}</div><div class="stat-label">总小时</div></div>
+      <div class="stat-card group-work"><div class="stat-value">${books.filter(r => r.status === '在读').length}</div><div class="stat-label">在读</div></div>
+    </div>`;
+    let html = stats + `<div class="habit-section">
+      <div class="habit-section-head"><span class="habit-section-title">📖 日拱一卒</span><span class="habit-section-stat">累计 ${logs.length} 次</span></div>
+      ${heatmapHtml(logs, 'duration', '')}
+    </div>`;
+    if (books.length) {
+      html += `<div class="section-title" style="font-size:14px;">📚 看书记录</div>` + books.map(b => `<div class="app-card">
+        <div class="app-card-head">
+          <span class="app-card-title">${esc(b.title)}</span>
+          <span class="app-card-ops"><button data-edit="${b._id}">编辑</button><button class="danger" data-del="${b._id}">删</button></span>
+        </div>
+        <div class="app-card-body">
+          ${b.author ? `<p>作者：${esc(b.author)}</p>` : ''}
+          <p>${esc(b.status)} ${b.progress ? '· 进度 ' + b.progress : ''}</p>
+        </div>
+      </div>`).join('');
+    }
+    return html;
+  }
+
+  function renderMoney(tab) {
+    const flows = Store.getList('flows');
+    const ym = new Date().toISOString().slice(0, 7);
+    const month = flows.filter(r => (r.date || '').startsWith(ym));
+    const inc = month.filter(r => r.direction === '收入').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const exp = month.filter(r => r.direction === '支出').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const stats = `<div class="stat-row">
+      <div class="stat-card group-work"><div class="stat-value" style="color:var(--life-deep);">€${inc.toFixed(0)}</div><div class="stat-label">本月收入</div></div>
+      <div class="stat-card group-work"><div class="stat-value" style="color:#16a34a;">€${exp.toFixed(0)}</div><div class="stat-label">本月支出</div></div>
+      <div class="stat-card group-work"><div class="stat-value">€${(inc - exp).toFixed(0)}</div><div class="stat-label">结余</div></div>
+    </div>`;
+    if (!flows.length) return stats + `<div class="empty-state"><div class="empty-state-icon">💶</div><div class="empty-state-text">还没有收支记录</div></div>`;
+    const recent = flows.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 20);
+    const list = recent.map(r => `<div class="app-card">
+      <div class="app-card-head">
+        <span class="app-card-title">${esc(r.category || '其他')}</span>
+        <span class="app-card-ops"><button data-edit="${r._id}">编辑</button><button class="danger" data-del="${r._id}">删</button></span>
+      </div>
+      <div class="app-card-body">
+        <p><span class="tag" style="background:${r.direction === '收入' ? 'rgba(255,154,174,.12)' : 'rgba(110,184,255,.12)'};color:${r.direction === '收入' ? 'var(--life-deep)' : 'var(--work-deep)'}">${esc(r.direction)}</span> <b>€${parseFloat(r.amount || 0).toFixed(2)}</b> · ${esc(r.account || '未分类')}</p>
+        ${r.date ? `<p>${r.date}</p>` : ''}
+        ${r.note ? `<p>${esc(r.note)}</p>` : ''}
+      </div>
+    </div>`).join('');
+    return stats + list;
+  }
+
+  function renderJikuiTodos(tab) {
+    const todos = Store.getList('todos');
+    const total = todos.length;
+    const done = todos.filter(r => r.status === '完成').length;
+    const stats = `<div class="stat-row">
+      <div class="stat-card group-work"><div class="stat-value">${total}</div><div class="stat-label">待办总数</div></div>
+      <div class="stat-card group-work"><div class="stat-value">${done}</div><div class="stat-label">已完成</div></div>
+      <div class="stat-card group-work"><div class="stat-value">${Math.round((total ? done / total : 0) * 100)}%</div><div class="stat-label">完成率</div></div>
+    </div>`;
+    if (!todos.length) return stats + `<div class="empty-state"><div class="empty-state-icon">🌱</div><div class="empty-state-text">还没有待办，点击右上角 + 添加</div></div>`;
+    const items = todos.map(r => `<div class="todo-item">
+      <input type="checkbox" class="todo-check" data-toggle="${r._id}" data-key="status" ${r.status === '完成' ? 'checked' : ''}>
+      <div class="todo-main">
+        <div class="todo-title" style="${r.status === '完成' ? 'text-decoration:line-through;opacity:.55;' : ''}">${esc(r.item)}</div>
+        <div class="todo-meta">${r.due ? '截止 ' + r.due : ''} ${r.priority ? '· 优先级 ' + r.priority : ''}</div>
+      </div>
+      <button class="shop-item-del" data-del="${r._id}">×</button>
+    </div>`).join('');
+    return stats + `<div class="todo-list">${items}</div>`;
+  }
+
+  function renderFunList(tab) {
+    const items = Store.getList('items');
+    const statuses = ['想看', '在看', '看完'];
+    const stats = `<div class="stat-row">` + statuses.map(s =>
+      `<div class="stat-card group-life"><div class="stat-value">${items.filter(r => r.status === s).length}</div><div class="stat-label">${s}</div></div>`
+    ).join('') + `</div>`;
+    if (!items.length) return stats + `<div class="empty-state"><div class="empty-state-icon">🎬</div><div class="empty-state-text">还没有想看/在看的节目</div></div>`;
+    const list = items.map(r => `<div class="app-card">
+      <div class="app-card-head">
+        <span class="app-card-title">${esc(r.name)}</span>
+        <span class="app-card-ops"><button data-edit="${r._id}">编辑</button><button class="danger" data-del="${r._id}">删</button></span>
+      </div>
+      <div class="app-card-body">
+        <p><span class="tag">${esc(r.type || '其他')}</span> <span class="tag" style="background:rgba(255,154,174,.12);color:var(--life-deep);">${esc(r.status)}</span> ${r.rating ? '⭐ ' + r.rating : ''}</p>
+      </div>
+    </div>`).join('');
+    return stats + list;
   }
 
   /* ---------------- 生理期设置 ---------------- */
@@ -412,19 +741,68 @@ const App = (function () {
   }
 
   function renderHome() {
-    const cards = MODULES.filter(m => m.id !== 'home').map(m => {
-      const w = homeWidget(m);
-      return `<div class="home-card group-${m.group}" data-goto="${m.id}">
-        <div class="home-card-head"><span class="hc-icon">${m.icon}</span>${esc(m.name)}</div>
-        <div class="home-card-body">${w.body}</div>
-        ${w.foot ? `<div class="home-card-foot">${esc(w.foot)}</div>` : ''}
+    const name = Store.getSetting('nickname', '我');
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')} · 星期'日一二三四五六'[now.getDay()]`;
+    const weatherEl = document.getElementById('tb-weather');
+    const weather = weatherEl ? weatherEl.textContent.replace('🌡️ ', '') : '—';
+    const reminders = buildReminders();
+    const tiles = MODULES.filter(m => m.id !== 'home').map(m =>
+      `<div class="module-tile group-${m.group}" data-goto="${m.id}">
+        <div class="module-tile-icon">${m.icon}</div>
+        <div class="module-tile-name">${esc(m.name)}</div>
+        <div class="module-tile-desc">${esc(m.desc || '')}</div>
+      </div>`).join('');
+    return `
+      <div class="home-dashboard">
+        <div class="hero-card">
+          <div class="hero-top">
+            <div>
+              <h1 class="hero-greeting">✨ 你好，${esc(name)}</h1>
+              <div class="hero-meta">${dateStr}</div>
+            </div>
+            <div class="hero-weather"><b>${esc(weather)}</b><span>今日天气</span></div>
+          </div>
+        </div>
+        <div class="section-title">📌 今日提醒</div>
+        <div class="reminder-card">${reminders}</div>
+        <div class="section-title">📦 全部板块</div>
+        <div class="module-grid">${tiles}</div>
+        <div class="home-actions">
+          <button id="btn-export-home">导出备份</button>
+          <button class="primary" id="btn-settings-home">设置</button>
+        </div>
       </div>`;
-    }).join('');
-    return `<div class="home-grid">${cards}</div><div class="home-tip">点任意卡片进入对应模块 · 数据仅存本地，记得定期导出备份</div>`;
   }
   function bindHome(root) {
     root.querySelectorAll('[data-goto]').forEach(c =>
       c.onclick = () => selectModule(c.dataset.goto));
+    const exp = document.getElementById('btn-export-home');
+    if (exp) exp.onclick = () => {
+      const blob = new Blob([Store.exportAll()], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'workbench-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      a.click();
+    };
+    const set = document.getElementById('btn-settings-home');
+    if (set) set.onclick = openSettings;
+  }
+  function buildReminders() {
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const items = [];
+    Store.getList('todos').filter(r => r.status !== '完成').slice(0, 3).forEach(r =>
+      items.push({ icon: '📋', text: r.item, meta: r.due || '待办' }));
+    Store.getList('items').filter(r => r.done !== '已买').slice(0, 3).forEach(r =>
+      items.push({ icon: '🛒', text: r.name, meta: r.cat || '购物' }));
+    Store.getList('daily').filter(r => !r.done).slice(0, 3).forEach(r =>
+      items.push({ icon: '🏃', text: r.item, meta: (r.duration || '') + '分' }));
+    Store.getList('courses').filter(r => r.status === '进行' && r.due).slice(0, 3).forEach(r =>
+      items.push({ icon: '📚', text: r.name, meta: r.due >= todayKey ? '即将截止' : r.due.slice(5) }));
+    if (!items.length) return `<div class="reminder-empty">今天没有待办，享受当下吧～</div>`;
+    return `<div class="reminder-list">` + items.map(it =>
+      `<div class="reminder-item"><span>${esc(it.icon)}</span><span>${esc(it.text)}</span><small>${esc(it.meta)}</small></div>`
+    ).join('') + `</div>`;
   }
 
   /* ---------------- 弹窗 ---------------- */

@@ -7,7 +7,8 @@
   <title>小满</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="css/style.css?v=7">
+  <link rel="stylesheet" href="css/style.css?v=8">
+  <link rel="stylesheet" href="css/app-v2.css?v=8">
 </head>
 <body>
   <!-- 梦幻背景装饰 -->
@@ -72,16 +73,16 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=7"></script>
-  <script src="js/store.js?v=7"></script>
-  <script src="js/topbar.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/config.js?v=8"></script>
+  <script src="js/store.js?v=8"></script>
+  <script src="js/topbar.js?v=8"></script>
+  <script src="js/app.js?v=8"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       Topbar.init();
       App.init();
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=7').catch(function () {});
+        navigator.serviceWorker.register('sw.js?v=8').catch(function () {});
       }
     });
   </script>
