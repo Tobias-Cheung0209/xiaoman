@@ -67,9 +67,9 @@ body {
 .bubble {
   position: absolute; border-radius: 50%; filter: blur(34px);
 }
-.b1 { width: 320px; height: 320px; top: -90px; right: -70px; background: linear-gradient(135deg, #D6EFFF, #FFE8F0); opacity: .55; }
-.b2 { width: 260px; height: 260px; bottom: -60px; left: -80px; background: linear-gradient(135deg, #FFD6E0, #D6EFFF); opacity: .55; }
-.b3 { width: 220px; height: 220px; top: 42%; left: 32%; background: #E0F2FF; opacity: .38; }
+.b1 { width: 320px; height: 320px; top: -90px; right: -70px; background: linear-gradient(135deg, #D6EFFF, #FFE8F0); opacity: .3; }
+.b2 { width: 260px; height: 260px; bottom: -60px; left: -80px; background: linear-gradient(135deg, #FFD6E0, #D6EFFF); opacity: .3; }
+.b3 { width: 220px; height: 220px; top: 42%; left: 32%; background: #E0F2FF; opacity: .2; }
 
 /* ---------------- 顶部状态栏 ---------------- */
 #topbar {
@@ -127,7 +127,7 @@ body {
 /* 顶部栏固定占自身高度，下方 layout 填满剩余空间；侧边栏与内容各自独立滚动，
    侧边栏天然从状态栏正下方开始，永不遮挡「首页」（不再依赖 --topbar-h 测量）。
    注意：#layout 不能加 z-index，否则移动抽屉的 z-index 会被困在 layout 内部，浮不到顶层。 */
-#layout { display: flex; flex: 1 1 auto; min-height: 0; }
+#layout { display: flex; flex: 1 1 auto; min-height: 0; position: relative; z-index: 1; }
 #sidebar {
   width: 210px;
   background: var(--sidebar-bg);

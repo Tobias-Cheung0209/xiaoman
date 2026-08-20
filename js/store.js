@@ -1,11 +1,19 @@
 /* ============================================================
  * 存储引擎：单一 JSON 根对象，localStorage 持久化
- * data = { collections: { modId: [records] }, settings: {...} }
+ * data = { collections: { key: [records] }, settings: {...} }
  * 导出/导入基于同一根对象
+ * V3：getList/CRUD 支持传入 tab 对象，自动取 tab.collection || tab.id
+ *     （多 Tab 共享同一集合），向后兼容纯字符串 key。
  * ============================================================ */
 
 const Store = (function () {
   const KEY = 'wb_data';
+
+  /* tab 对象 → collection key；纯字符串原样返回 */
+  function keyOf(tabOrId) {
+    if (tabOrId && typeof tabOrId === 'object') return tabOrId.collection || tabOrId.id;
+    return tabOrId;
+  }
 
   function load() {
     try {
@@ -35,34 +43,40 @@ const Store = (function () {
   }
 
   return {
+    keyOf,
     /* 集合（列表型模块/子表） */
-    getList(modId) {
-      return data.collections[modId] || [];
+    getList(tabOrId) {
+      return data.collections[keyOf(tabOrId)] || [];
     },
-    saveList(modId, arr) {
-      data.collections[modId] = arr;
+    saveList(tabOrId, arr) {
+      data.collections[keyOf(tabOrId)] = arr;
       persist();
     },
-    addRecord(modId, rec) {
-      const arr = this.getList(modId);
+    addRecord(tabOrId, rec) {
+      const k = keyOf(tabOrId);
+      const arr = data.collections[k] || [];
       rec._id = 'r' + Date.now() + Math.floor(Math.random() * 1000);
       rec._created = new Date().toISOString();
       arr.unshift(rec);
-      this.saveList(modId, arr);
+      data.collections[k] = arr;
+      persist();
       return rec;
     },
-    updateRecord(modId, id, rec) {
-      const arr = this.getList(modId);
+    updateRecord(tabOrId, id, rec) {
+      const k = keyOf(tabOrId);
+      const arr = data.collections[k] || [];
       const i = arr.findIndex(r => r._id === id);
-      if (i >= 0) { arr[i] = Object.assign({}, arr[i], rec); this.saveList(modId, arr); }
+      if (i >= 0) { arr[i] = Object.assign({}, arr[i], rec); data.collections[k] = arr; persist(); }
     },
-    deleteRecord(modId, id) {
-      let arr = this.getList(modId);
+    deleteRecord(tabOrId, id) {
+      const k = keyOf(tabOrId);
+      let arr = data.collections[k] || [];
       arr = arr.filter(r => r._id !== id);
-      this.saveList(modId, arr);
+      data.collections[k] = arr;
+      persist();
     },
 
-    /* 设置（单条记录型，如生理期设置、昵称等） */
+    /* 设置（单条记录型，如经期设置、昵称等） */
     getSetting(key, def) {
       return key in data.settings ? data.settings[key] : def;
     },

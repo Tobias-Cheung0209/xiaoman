@@ -1,8 +1,8 @@
 /* 极简离线缓存：缓存应用外壳，导航走网络优先、失败回退缓存 */
-const CACHE = 'wb-shell-v8';
+const CACHE = 'wb-shell-v9';
 const FILES = [
-  'index.html', 'css/style.css?v=8', 'css/app-v2.css?v=8', 'js/config.js?v=8', 'js/store.js?v=8',
-  'js/topbar.js?v=8', 'js/app.js?v=8', 'manifest.webmanifest', 'icon.svg'
+  'index.html', 'css/style.css?v=9', 'css/app-v2.css?v=9', 'js/config.js?v=9', 'js/store.js?v=9',
+  'js/topbar.js?v=9', 'js/app.js?v=9', 'manifest.webmanifest', 'icon.svg'
 ];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))); self.clients.claim(); });
