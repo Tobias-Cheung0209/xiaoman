@@ -744,12 +744,10 @@ const App = (function () {
       <div class="habit-section-head"><span class="habit-section-title">📅 年度拱卒热力图</span><span class="habit-section-stat">${allDates.length} 天有进益</span></div>
       ${heatmapHtml(heatData, 'value', '')}
     </div>`;
-    // 名言墙
-    const qIdx = Store.getSetting('quoteIdx', 0);
-    const q = QUOTES[qIdx] || QUOTES[0];
+    // 名言墙（固定座右铭）
+    const motto = (typeof MOTTO !== 'undefined') ? MOTTO : '日拱一卒无有尽，功不唐捐终入海。';
     const quoteWall = `<div class="app-card" style="text-align:center;background:var(--card-work);">
-      <div style="font-size:16px;font-weight:700;line-height:1.6;">"${esc(q.t)}"</div>
-      <div style="color:var(--text-3);margin-top:6px;">—— ${esc(q.a)}</div>
+      <div style="font-size:16px;font-weight:700;line-height:1.6;">"${esc(motto)}"</div>
     </div>`;
     // 今日一得预览
     const tk = todayKey();

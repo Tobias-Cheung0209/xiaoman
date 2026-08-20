@@ -608,11 +608,12 @@
 /* 移动端抽屉打开时隐藏小满，避免叠在抽屉上方 */
 body.drawer-open #xiaoman-wrap { display: none !important; }
 
-/* ---- 容器 ---- */
+/* ---- 容器（默认趴在首页"今日提醒"卡片上沿） ---- */
 #xiaoman-wrap {
   position: fixed;
   right: 12px;
-  bottom: max(6px, env(safe-area-inset-bottom, 6px));
+  bottom: auto;
+  top: calc(env(safe-area-inset-top, 0px) + 22px);
   width: 130px;
   height: 150px;
   z-index: 80;
@@ -794,6 +795,21 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
   to { opacity: 1; transform: scale(1); }
 }
 .xm-bubble.show { animation: xm-pop .3s cubic-bezier(.34,1.56,.64,1); transform-origin: 85% 100%; }
+/* 上方空间不足 → 气泡挪到小满下方，尾巴朝上 */
+.xm-bubble.below { bottom: auto; top: calc(100% + 10px); }
+.xm-bubble.below::after {
+  bottom: auto; top: -8px;
+  border-right: none; border-bottom: none;
+  border-left: 1px solid rgba(255,200,210,.4);
+  border-top: 1px solid rgba(255,200,210,.4);
+}
+.xm-bubble.below::before {
+  bottom: auto; top: -16px;
+  border-right: none; border-bottom: none;
+  border-left: 1px solid rgba(255,200,210,.4);
+  border-top: 1px solid rgba(255,200,210,.4);
+}
+.xm-bubble.below.show { transform-origin: 85% 0; }
 
 /* ---- 快捷菜单（4 气泡按钮 + 精致小尾巴，距小满 ~10px 不贴住） ---- */
 .xm-menu {
@@ -844,6 +860,20 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 }
 .xm-menu-item:hover { background: rgba(120,180,255,.10); }
 .xm-menu-item:active { background: rgba(255,154,174,.20); }
+/* 上方空间不足 → 菜单挪到小满下方展开，尾巴朝上 */
+.xm-menu.below { bottom: auto; top: calc(100% + 6px); transform-origin: 90% 0; }
+.xm-menu.below::after {
+  bottom: auto; top: -8px;
+  border-right: none; border-bottom: none;
+  border-left: 1px solid rgba(255,200,210,.4);
+  border-top: 1px solid rgba(255,200,210,.4);
+}
+.xm-menu.below::before {
+  bottom: auto; top: -16px;
+  border-right: none; border-bottom: none;
+  border-left: 1px solid rgba(255,200,210,.4);
+  border-top: 1px solid rgba(255,200,210,.4);
+}
 
 /* ---- 全部模块面板（v15 居中弹窗 + 遮罩） ---- */
 .xm-panel-mask {
@@ -910,7 +940,7 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 
 /* 小屏微调 */
 @media (max-width: 480px) {
-  #xiaoman-wrap { right: 6px; width: 110px; height: 130px; }
+  #xiaoman-wrap { right: 6px; width: 110px; height: 130px; top: calc(env(safe-area-inset-top, 0px) + 48px); }
   #xm-doll { width: 100px; height: 100px; }
   .xm-menu { width: 134px; }
   .xm-panel { width: min(320px, 88vw); }

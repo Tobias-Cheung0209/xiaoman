@@ -22,22 +22,10 @@ const Topbar = (function () {
     }
   }
 
-  /* ---------- 名言（每日轮换） ---------- */
-  function dayIndex() {
-    const start = new Date(new Date().getFullYear(), 0, 0);
-    return Math.floor((new Date() - start) / 86400000);
-  }
-  function pickQuote(forceRandom) {
-    let i;
-    if (forceRandom) {
-      do { i = Math.floor(Math.random() * QUOTES.length); }
-      while (i === Store.getSetting('quoteIdx', -1) && QUOTES.length > 1);
-    } else {
-      i = dayIndex() % QUOTES.length;
-    }
-    Store.setSetting('quoteIdx', i);
-    const q = QUOTES[i];
-    quoteHtml = `“${q.t}” <span class="q-author">—— ${q.a}</span>`;
+  /* ---------- 名言（固定座右铭，不再轮换） ---------- */
+  function renderQuote() {
+    const t = (typeof MOTTO !== 'undefined') ? MOTTO : '日拱一卒无有尽，功不唐捐终入海。';
+    quoteHtml = `“${t}”`;
     const el = document.getElementById('hero-quote');
     if (el) el.innerHTML = quoteHtml;
   }
@@ -101,9 +89,9 @@ const Topbar = (function () {
 
   function init() {
     renderProfile();
-    pickQuote(false);
+    renderQuote();
     loadWeather();
   }
 
-  return { init, renderProfile, getWeatherText, getQuoteHtml, getNextEvent, refreshQuote: () => pickQuote(true) };
+  return { init, renderProfile, getWeatherText, getQuoteHtml, getNextEvent };
 })();

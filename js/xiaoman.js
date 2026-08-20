@@ -6,7 +6,8 @@
  *  - 保持醒着：say/modules/settings 不立刻 close；只有选具体模块/填表/dismiss 才睡
  * ============================================================ */
 const Xiaoman = (function () {
-  const LS_POS = 'wb_mascot_pos';
+  const LS_POS = 'wb_mascot_pos_v2';
+  const LS_POS_OLD = 'wb_mascot_pos';
 
   let wrap, doll, bubble, menu, panel, panelMask, grid, search, shock, particlesEl;
   let bubbleTimer = null, wakeTimers = [];
@@ -81,6 +82,7 @@ const Xiaoman = (function () {
         if (!wrap.classList.contains('xm-rubbing')) return;
         wrap.classList.remove('xm-rubbing');
         wrap.classList.add('xm-open');
+        fitMenu();                     // 进入展开态时测量避让
         clickFx();
       }, 500));
     }, 450));
@@ -111,9 +113,11 @@ const Xiaoman = (function () {
   function say(text) {
     hideBubble();
     bubble.textContent = text;
-    bubble.classList.remove('show');
+    bubble.classList.remove('show', 'below');
+    bubble.style.removeProperty('right');
+    bubble.hidden = false;           // 先布局，才能测量避让
+    fitBubble();
     void bubble.offsetWidth;
-    bubble.hidden = false;
     bubble.classList.add('show');
     clearTimeout(bubbleTimer);
     // 气播完后菜单回来（若小满还醒着）
@@ -131,7 +135,35 @@ const Xiaoman = (function () {
 
   /* ---------------- 菜单收起 / 恢复（说点啥时不与气泡重叠） ---------------- */
   function collapseMenu() { wrap.classList.add('xm-speaking'); }
-  function expandMenu() { wrap.classList.remove('xm-speaking'); }
+  function expandMenu() { wrap.classList.remove('xm-speaking'); fitMenu(); }
+
+  /* ---------------- 自动避让：菜单/气泡不超出视口 ---------------- */
+  function fitMenu() {
+    if (!menu) return;
+    menu.classList.remove('below');
+    menu.style.removeProperty('right');
+    // 上方空间不足 → 切换到小满下方展开
+    const dTop = doll.getBoundingClientRect().top;
+    const mH = menu.offsetHeight || 190;
+    if (dTop < mH + 16) menu.classList.add('below');
+    // 水平：贴左缘时右移，保证完整可见
+    const mW = menu.offsetWidth || 142;
+    const wR = wrap.getBoundingClientRect();
+    const leftEdge = wR.right - 6 - mW;   // 默认 right:6px
+    if (leftEdge < 8) menu.style.right = (6 - (8 - leftEdge)) + 'px';
+  }
+  function fitBubble() {
+    if (!bubble) return;
+    bubble.classList.remove('below');
+    bubble.style.removeProperty('right');
+    const dTop = doll.getBoundingClientRect().top;
+    const bH = bubble.offsetHeight || 64;
+    if (dTop < bH + 18) bubble.classList.add('below');
+    const bW = bubble.offsetWidth || 180;
+    const wR = wrap.getBoundingClientRect();
+    const leftEdge = wR.right - 12 - bW;  // 默认 right:12px
+    if (leftEdge < 8) bubble.style.right = (12 - (8 - leftEdge)) + 'px';
+  }
 
   /* ---------------- 全部模块面板（v15 居中弹窗） ---------------- */
   function showPanel() {
@@ -143,6 +175,7 @@ const Xiaoman = (function () {
       clearWakeTimers();
       wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing', 'xm-speaking');
       wrap.classList.add('xm-open');
+      fitMenu();
     }
     renderModules('');
     panel.hidden = false;
@@ -289,6 +322,8 @@ const Xiaoman = (function () {
     particlesEl = $('xm-particles');
     if (!wrap || !doll) return;
 
+    // 旧版本的位置记录（底部角落）不再适用，清除
+    try { localStorage.removeItem(LS_POS_OLD); } catch (e) {}
     applySavedPos();
     initDrag();
     bindDismiss();
