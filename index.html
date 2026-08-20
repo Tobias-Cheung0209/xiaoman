@@ -7,13 +7,15 @@
   <title>小满</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" sizes="192x192" href="icon-192.png">
+  <link rel="icon" sizes="512x512" href="icon-512.png">
   <!-- iOS PWA 全屏 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="小满">
-  <link rel="stylesheet" href="css/style.css?v=9">
-  <link rel="stylesheet" href="css/app-v2.css?v=9">
+  <link rel="stylesheet" href="css/style.css?v=10">
+  <link rel="stylesheet" href="css/app-v2.css?v=10">
 </head>
 <body>
   <!-- 梦幻背景装饰 -->
@@ -64,16 +66,16 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=9"></script>
-  <script src="js/store.js?v=9"></script>
-  <script src="js/topbar.js?v=9"></script>
-  <script src="js/app.js?v=9"></script>
+  <script src="js/config.js?v=10"></script>
+  <script src="js/store.js?v=10"></script>
+  <script src="js/topbar.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       Topbar.init();
       App.init();
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=9').catch(function () {});
+        navigator.serviceWorker.register('sw.js?v=10').catch(function () {});
       }
     });
   </script>
