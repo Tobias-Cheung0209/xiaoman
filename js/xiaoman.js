@@ -1,16 +1,15 @@
 /* ============================================================
- * 小满吉祥物（V3.1）：全局导航入口
- * - 待机：趴在屏幕边缘呼吸/眨眼/头发轻晃
- * - 单击：探头弹出快捷菜单（快速新建/一句话/全部模块/设置）
- * - 长按拖拽：可自由移动，位置记忆在 localStorage
- * - 「全部模块」二级面板带实时搜索，点击跳转
- * - 同一时间只有一个浮层（菜单 / 气泡 / 面板）
+ * 小满吉祥物 V5.0：起身揉眼动画（3 图时序）+ 居中弹窗 + 保持醒着
+ * 状态机：idle ↔ waking → rubbing → open
+ *  - 待机：睡觉图（趴着闭眼），呼吸 + 偶尔轻晃
+ *  - 点击：起身(sleep 缩旋转消失) → 揉眼(rubbing 摇) → 探头(peek)+菜单
+ *  - 保持醒着：say/modules/settings 不立刻 close；只有选具体模块/填表/dismiss 才睡
  * ============================================================ */
 const Xiaoman = (function () {
   const LS_POS = 'wb_mascot_pos';
 
-  let wrap, doll, bubble, menu, panel, grid, search, shock, particlesEl;
-  let bubbleTimer = null;
+  let wrap, doll, bubble, menu, panel, panelMask, grid, search, shock, particlesEl;
+  let bubbleTimer = null, wakeTimers = [];
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -29,10 +28,6 @@ const Xiaoman = (function () {
     shock.classList.remove('show');
     void shock.offsetWidth;
     shock.classList.add('show');
-    /* 点头弹起 */
-    doll.classList.remove('xm-nod');
-    void doll.offsetWidth;
-    doll.classList.add('xm-nod');
     /* 粒子 */
     spawnParticles(5);
   }
@@ -60,22 +55,50 @@ const Xiaoman = (function () {
     }
   }
 
-  /* ---------------- 状态控制 ---------------- */
-  function open() {
+  /* ---------------- 状态机：起身 / 揉眼 / 探头 / 睡 ---------------- */
+  function isAwake() {
+    return wrap.classList.contains('xm-open') ||
+           wrap.classList.contains('xm-waking') ||
+           wrap.classList.contains('xm-rubbing');
+  }
+  function clearWakeTimers() {
+    wakeTimers.forEach(t => clearTimeout(t));
+    wakeTimers = [];
+  }
+  function startWake() {
+    clearWakeTimers();
     hideBubble();
     hidePanel();
-    wrap.classList.remove('xm-idle');
-    wrap.classList.add('xm-open');
+    wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode');
+    wrap.classList.add('xm-waking');
+    // 阶段 1：起身（sleep 缩旋转消失 → rubbing 出现）~450ms
+    wakeTimers.push(setTimeout(() => {
+      if (!wrap.classList.contains('xm-waking')) return;
+      wrap.classList.remove('xm-waking');
+      wrap.classList.add('xm-rubbing');
+      // 阶段 2：揉眼（rubbing 摇两下）~500ms
+      wakeTimers.push(setTimeout(() => {
+        if (!wrap.classList.contains('xm-rubbing')) return;
+        wrap.classList.remove('xm-rubbing');
+        wrap.classList.add('xm-open');
+        clickFx();
+      }, 500));
+    }, 450));
+  }
+  function open() {
+    if (isAwake()) return;
+    startWake();
   }
   function close() {
+    clearWakeTimers();
     wrap.classList.add('xm-idle');
-    wrap.classList.remove('xm-open', 'xm-panel-mode');
+    wrap.classList.remove('xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode');
     hideBubble();
     hidePanel();
   }
   function toggle() {
-    if (wrap.classList.contains('xm-open')) close();
-    else { open(); clickFx(); }
+    if (isAwake()) close();
+    else open();
   }
 
   /* ---------------- 台词气泡 ---------------- */
@@ -86,8 +109,6 @@ const Xiaoman = (function () {
     void bubble.offsetWidth;
     bubble.hidden = false;
     bubble.classList.add('show');
-    doll.classList.add('xm-talk', 'xm-happy');
-    setTimeout(() => doll.classList.remove('xm-happy'), 650);
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(hideBubble, 2800);
   }
@@ -96,25 +117,37 @@ const Xiaoman = (function () {
     bubbleTimer = null;
     bubble.hidden = true;
     bubble.classList.remove('show');
-    doll.classList.remove('xm-talk');
   }
 
-  /* ---------------- 全部模块面板（带搜索） ---------------- */
+  /* ---------------- 全部模块面板（v15 居中弹窗） ---------------- */
   function showPanel() {
     hideBubble();
-    wrap.classList.add('xm-open', 'xm-panel-mode');
+    // 确保小满处于 open 状态（保持醒着）
+    if (wrap.classList.contains('xm-idle') || wrap.classList.contains('xm-waking') || wrap.classList.contains('xm-rubbing')) {
+      // 用户从 idle/waking 触发？——保持当前进度加速
+      // 简单做法：强制进入 open
+      clearWakeTimers();
+      wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing');
+      wrap.classList.add('xm-open');
+    }
     renderModules('');
     panel.hidden = false;
+    panelMask.hidden = false;
     panel.classList.remove('show');
+    panelMask.classList.remove('show');
     void panel.offsetWidth;
     panel.classList.add('show');
+    panelMask.classList.add('show');
     search.value = '';
     setTimeout(() => search.focus(), 80);
   }
   function hidePanel() {
-    panel.hidden = true;
     panel.classList.remove('show');
-    wrap.classList.remove('xm-panel-mode');
+    panelMask.classList.remove('show');
+    setTimeout(() => {
+      panel.hidden = true;
+      panelMask.hidden = true;
+    }, 260);
   }
   function renderModules(q) {
     const kw = (q || '').trim();
@@ -130,16 +163,17 @@ const Xiaoman = (function () {
       b.onclick = () => {
         const name = b.querySelector('.xm-mod-name').textContent;
         App.selectModule(b.dataset.mod);
-        close();
+        close(); // 选定具体模块后小满睡下
         say('走，去「' + name + '」看看');
       };
     });
   }
 
-  /* ---------------- 菜单动作 ---------------- */
+  /* ---------------- 菜单动作（保持醒着：say/modules/settings 不 close） ---------------- */
   function runAction(act) {
     switch (act) {
       case 'add': {
+        // 选具体功能：填表——让小满睡
         const mod = (typeof MODULE_MAP !== 'undefined') ? MODULE_MAP['discipline'] : null;
         const tab = mod ? mod.tabs.find(t => t.id === 'lifeTodos') : null;
         close();
@@ -147,14 +181,16 @@ const Xiaoman = (function () {
         break;
       }
       case 'say':
-        close();
+        // 一句话：显示气泡，保持醒着
+        hidePanel();
         say(randomLine());
         break;
       case 'modules':
+        // 全部模块：弹窗，小满保持醒着
         showPanel();
         break;
       case 'settings':
-        close();
+        // 设置：弹窗，小满保持醒着
         App.openSettings();
         break;
     }
@@ -216,7 +252,8 @@ const Xiaoman = (function () {
   function bindDismiss() {
     document.addEventListener('pointerdown', e => {
       if (wrap.contains(e.target)) return;
-      if (wrap.classList.contains('xm-open')) close();
+      if (panelMask && !panelMask.hidden && panel.contains(e.target)) return;
+      if (isAwake()) close();
     });
   }
 
@@ -227,6 +264,7 @@ const Xiaoman = (function () {
     bubble = $('xm-bubble');
     menu = $('xm-menu');
     panel = $('xm-panel');
+    panelMask = $('xm-panel-mask');
     grid = $('xm-mod-grid');
     search = $('xm-search');
     shock = $('xm-shock');
@@ -241,6 +279,7 @@ const Xiaoman = (function () {
       b.onclick = () => runAction(b.dataset.act);
     });
     $('xm-panel-close').onclick = hidePanel;
+    if (panelMask) panelMask.onclick = hidePanel;
     search.addEventListener('input', () => renderModules(search.value));
     search.addEventListener('keydown', e => {
       if (e.key === 'Escape') hidePanel();
