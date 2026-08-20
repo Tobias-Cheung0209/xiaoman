@@ -69,7 +69,7 @@ const Xiaoman = (function () {
     clearWakeTimers();
     hideBubble();
     hidePanel();
-    wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode');
+    wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode', 'xm-speaking');
     wrap.classList.add('xm-waking');
     // 阶段 1：起身（sleep 缩旋转消失 → rubbing 出现）~450ms
     wakeTimers.push(setTimeout(() => {
@@ -92,11 +92,17 @@ const Xiaoman = (function () {
   function close() {
     clearWakeTimers();
     wrap.classList.add('xm-idle');
-    wrap.classList.remove('xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode');
+    wrap.classList.remove('xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode', 'xm-speaking');
     hideBubble();
     hidePanel();
   }
   function toggle() {
+    if (wrap.classList.contains('xm-speaking')) {
+      // 正在说话（菜单收起中）：再点小满 → 直接恢复菜单
+      hideBubble();
+      expandMenu();
+      return;
+    }
     if (isAwake()) close();
     else open();
   }
@@ -110,7 +116,11 @@ const Xiaoman = (function () {
     bubble.hidden = false;
     bubble.classList.add('show');
     clearTimeout(bubbleTimer);
-    bubbleTimer = setTimeout(hideBubble, 2800);
+    // 气播完后菜单回来（若小满还醒着）
+    bubbleTimer = setTimeout(() => {
+      hideBubble();
+      if (isAwake()) expandMenu();
+    }, 2800);
   }
   function hideBubble() {
     clearTimeout(bubbleTimer);
@@ -118,6 +128,10 @@ const Xiaoman = (function () {
     bubble.hidden = true;
     bubble.classList.remove('show');
   }
+
+  /* ---------------- 菜单收起 / 恢复（说点啥时不与气泡重叠） ---------------- */
+  function collapseMenu() { wrap.classList.add('xm-speaking'); }
+  function expandMenu() { wrap.classList.remove('xm-speaking'); }
 
   /* ---------------- 全部模块面板（v15 居中弹窗） ---------------- */
   function showPanel() {
@@ -127,7 +141,7 @@ const Xiaoman = (function () {
       // 用户从 idle/waking 触发？——保持当前进度加速
       // 简单做法：强制进入 open
       clearWakeTimers();
-      wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing');
+      wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing', 'xm-speaking');
       wrap.classList.add('xm-open');
     }
     renderModules('');
@@ -181,8 +195,9 @@ const Xiaoman = (function () {
         break;
       }
       case 'say':
-        // 一句话：显示气泡，保持醒着
+        // 说点啥：收起菜单，气泡独占，小满保持醒着
         hidePanel();
+        collapseMenu();
         say(randomLine());
         break;
       case 'modules':
@@ -253,6 +268,9 @@ const Xiaoman = (function () {
     document.addEventListener('pointerdown', e => {
       if (wrap.contains(e.target)) return;
       if (panelMask && !panelMask.hidden && panel.contains(e.target)) return;
+      // App 自身弹窗（设置/表单）打开时不误关小满
+      const appModal = $('modal');
+      if (appModal && appModal.classList.contains('show')) return;
       if (isAwake()) close();
     });
   }
