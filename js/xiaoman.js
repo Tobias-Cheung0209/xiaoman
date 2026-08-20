@@ -9,7 +9,7 @@
 const Xiaoman = (function () {
   const LS_POS = 'wb_mascot_pos';
 
-  let wrap, doll, bubble, menu, panel, grid, search;
+  let wrap, doll, bubble, menu, panel, grid, search, shock, particlesEl;
   let bubbleTimer = null;
 
   function $(id) { return document.getElementById(id); }
@@ -21,6 +21,43 @@ const Xiaoman = (function () {
   function randomLine() {
     const L = (typeof XIAOMAN_LINES !== 'undefined') ? XIAOMAN_LINES : [];
     return L.length ? L[Math.floor(Math.random() * L.length)] : '小满未满，刚刚好';
+  }
+
+  /* ---------------- 点击特效 ---------------- */
+  function clickFx() {
+    /* 惊讶气泡 */
+    shock.classList.remove('show');
+    void shock.offsetWidth;
+    shock.classList.add('show');
+    /* 点头弹起 */
+    doll.classList.remove('xm-nod');
+    void doll.offsetWidth;
+    doll.classList.add('xm-nod');
+    /* 粒子 */
+    spawnParticles(5);
+  }
+  function spawnParticles(n) {
+    const host = $('xm-particles') || particlesEl || wrap;
+    if (!host) return;
+    const cx = wrap.offsetWidth / 2;
+    const cy = wrap.offsetHeight / 2;
+    const icons = ['✨', '💗', '✦', '✧', '★', '💖'];
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement('span');
+      p.className = 'xm-particle';
+      p.textContent = icons[Math.floor(Math.random() * icons.length)];
+      const angle = (-90 + (Math.random() - 0.5) * 110) * Math.PI / 180;
+      const dist = 50 + Math.random() * 50;
+      p.style.left = cx + 'px';
+      p.style.top = cy + 'px';
+      p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+      p.style.setProperty('--dy', Math.sin(angle) * dist - 20 + 'px');
+      p.style.setProperty('--rot', (Math.random() * 80 - 40) + 'deg');
+      host.appendChild(p);
+      void p.offsetWidth;
+      p.classList.add('fly');
+      setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 1100);
+    }
   }
 
   /* ---------------- 状态控制 ---------------- */
@@ -38,7 +75,7 @@ const Xiaoman = (function () {
   }
   function toggle() {
     if (wrap.classList.contains('xm-open')) close();
-    else open();
+    else { open(); clickFx(); }
   }
 
   /* ---------------- 台词气泡 ---------------- */
@@ -192,6 +229,8 @@ const Xiaoman = (function () {
     panel = $('xm-panel');
     grid = $('xm-mod-grid');
     search = $('xm-search');
+    shock = $('xm-shock');
+    particlesEl = $('xm-particles');
     if (!wrap || !doll) return;
 
     applySavedPos();
