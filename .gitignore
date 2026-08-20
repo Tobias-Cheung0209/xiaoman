@@ -4,6 +4,9 @@
 改版方案.md
 实施方案.md
 
+# 生成/调试产物不发布
+generated-images/
+
 # 系统/编辑器
 .DS_Store
 Thumbs.db

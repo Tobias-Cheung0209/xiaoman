@@ -1263,8 +1263,8 @@ const App = (function () {
   }
 
   /* ---------------- 抽屉（移动端） ---------------- */
-  function openDrawer() { document.getElementById('sidebar').classList.add('open'); document.getElementById('backdrop').classList.add('show'); document.body.style.overflow = 'hidden'; }
-  function closeDrawer() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); document.body.style.overflow = ''; }
+  function openDrawer() { document.getElementById('sidebar').classList.add('open'); document.getElementById('backdrop').classList.add('show'); document.body.style.overflow = 'hidden'; document.body.classList.add('drawer-open'); }
+  function closeDrawer() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('backdrop').classList.remove('show'); document.body.style.overflow = ''; document.body.classList.remove('drawer-open'); }
 
   /* 动态测量顶部栏高度 */
   function syncTopbarH() {
@@ -1299,5 +1299,5 @@ const App = (function () {
     window.addEventListener('orientationchange', () => setTimeout(syncTopbarH, 200));
   }
 
-  return { init, selectModule };
+  return { init, selectModule, openForm, openSettings };
 })();

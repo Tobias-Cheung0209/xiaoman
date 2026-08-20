@@ -591,3 +591,185 @@
   #tb-gear { width: 36px; height: 36px; }
 }
 
+/* ============================================================
+ * V3.1 小满吉祥物 + 导航整合
+ * 电脑端：移除左侧导览栏，导航交给小满；手机端保留汉堡抽屉
+ * ============================================================ */
+
+/* 桌面端隐藏左侧导览栏与 🏠 按钮（小满接管导航） */
+@media (min-width: 821px) {
+  #sidebar { display: none !important; }
+  #menu-toggle { display: none !important; }
+}
+
+/* 移动端抽屉打开时隐藏小满，避免叠在抽屉上方 */
+body.drawer-open #xiaoman-wrap { display: none !important; }
+
+/* ---- 容器 ---- */
+#xiaoman-wrap {
+  position: fixed;
+  right: 14px;
+  bottom: max(6px, env(safe-area-inset-bottom, 6px));
+  width: 118px;
+  height: 132px;
+  z-index: 80;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#xiaoman-wrap * { pointer-events: auto; }
+
+/* ---- 小满本体按钮 ---- */
+#xm-doll {
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 106px; height: 106px;
+  border: none; background: none; padding: 0; cursor: pointer;
+  transform: translateX(-50%) translateY(46%);
+  transition: transform .38s cubic-bezier(.34,1.56,.64,1);
+  filter: drop-shadow(0 8px 14px rgba(180,150,170,.30));
+}
+#xiaoman-wrap.xm-open #xm-doll { transform: translateX(-50%) translateY(6%); }
+#xm-doll:active { transform: translateX(-50%) translateY(46%) scale(.97); }
+#xiaoman-wrap.xm-open #xm-doll:active { transform: translateX(-50%) translateY(6%) scale(.97); }
+#xm-doll svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+
+/* ---- 部件动画（内嵌 SVG 才可驱动） ---- */
+@keyframes xm-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+#xm-svg { transform-origin: 50% 88%; animation: xm-breathe 3.4s ease-in-out infinite; }
+@keyframes xm-blink { 0%, 91%, 100% { transform: scaleY(1); } 94%, 97% { transform: scaleY(.08); } }
+.xm-eye {
+  transform-box: fill-box; transform-origin: center;
+  animation: xm-blink 5.8s ease-in-out infinite;
+}
+@keyframes xm-sway { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-3deg); } }
+.xm-hair {
+  transform-box: fill-box; transform-origin: 50% 30%;
+  animation: xm-sway 7s ease-in-out infinite;
+}
+@keyframes xm-talk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.55); } }
+.xm-talk .xm-mouth {
+  transform-box: fill-box; transform-origin: center;
+  animation: xm-talk .5s ease-in-out infinite;
+}
+@keyframes xm-happy {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+}
+.xm-happy .xm-eye { animation: xm-happy .55s ease-out; }
+
+/* ---- 台词气泡 ---- */
+.xm-bubble {
+  position: absolute;
+  right: 4px;
+  bottom: 112px;
+  max-width: 196px;
+  background: var(--surface);
+  border: 1px solid rgba(255,200,210,.4);
+  border-radius: 16px;
+  padding: 9px 13px;
+  font-size: 13px; color: var(--text-2); line-height: 1.5;
+  box-shadow: var(--shadow-float);
+  z-index: 2;
+}
+.xm-bubble::after {
+  content: ''; position: absolute; right: 30px; bottom: -7px;
+  width: 12px; height: 12px;
+  background: var(--surface);
+  border-right: 1px solid rgba(255,200,210,.4);
+  border-bottom: 1px solid rgba(255,200,210,.4);
+  transform: rotate(45deg);
+}
+@keyframes xm-pop {
+  from { opacity: 0; transform: scale(.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+.xm-bubble.show { animation: xm-pop .3s cubic-bezier(.34,1.56,.64,1); transform-origin: 85% 100%; }
+
+/* ---- 快捷菜单（4 气泡按钮） ---- */
+.xm-menu {
+  position: absolute;
+  right: 2px;
+  bottom: 104px;
+  width: 134px;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--surface);
+  border: 1px solid rgba(255,200,210,.4);
+  border-radius: 18px;
+  padding: 6px;
+  box-shadow: var(--shadow-float);
+  opacity: 0;
+  transform: translateY(10px) scale(.92);
+  transform-origin: 90% 100%;
+  pointer-events: none;
+  transition: .22s cubic-bezier(.34,1.56,.64,1);
+  z-index: 2;
+}
+#xiaoman-wrap.xm-open .xm-menu { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.xm-menu-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 9px 10px; border: none; background: transparent;
+  border-radius: 12px; font-size: 13px; color: var(--text); cursor: pointer; text-align: left;
+}
+.xm-menu-item:hover { background: rgba(120,180,255,.10); }
+.xm-menu-item:active { background: rgba(255,154,174,.20); }
+
+/* ---- 全部模块面板（带搜索） ---- */
+.xm-panel {
+  position: absolute;
+  bottom: 112px;
+  left: 50%;
+  width: min(300px, 78vw);
+  background: var(--surface);
+  border: 1px solid rgba(255,200,210,.4);
+  border-radius: 20px;
+  box-shadow: var(--shadow-float);
+  padding: 12px;
+  z-index: 3;
+}
+.xm-panel.show { animation: xm-rise .28s cubic-bezier(.34,1.56,.64,1); }
+@keyframes xm-rise {
+  from { opacity: 0; transform: translateX(-55%) translateY(12px); }
+  to { opacity: 1; transform: translateX(-55%) translateY(0); }
+}
+.xm-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.xm-panel-title { font-size: 14px; font-weight: 700; }
+.xm-panel-close {
+  width: 26px; height: 26px; border-radius: 50%; border: none;
+  background: rgba(220,230,245,.45); cursor: pointer; color: var(--text-3); font-size: 15px; line-height: 1;
+}
+.xm-panel-close:hover { background: rgba(255,154,174,.25); color: var(--life-deep); }
+.xm-search {
+  width: 100%; padding: 8px 12px; margin-bottom: 10px;
+  border: 1px solid rgba(220,230,245,.8); border-radius: 12px;
+  background: var(--surface-2); font-size: 13px; color: var(--text);
+}
+.xm-search:focus { outline: none; border-color: rgba(110,184,255,.7); }
+.xm-mod-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  max-height: 236px; overflow-y: auto;
+}
+.xm-mod {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 4px; border: none; border-radius: 14px;
+  background: var(--surface-2); cursor: pointer;
+  font-size: 11px; color: var(--text-2); transition: .15s;
+}
+.xm-mod:hover { transform: translateY(-2px); background: rgba(110,184,255,.15); }
+.xm-mod.active { background: rgba(255,154,174,.20); color: var(--life-deep); }
+.xm-mod-icon { font-size: 20px; line-height: 1; }
+.xm-mod-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xm-mod-empty { grid-column: 1 / -1; text-align: center; color: var(--text-3); padding: 14px 0; font-size: 12px; }
+.xm-mod-grid::-webkit-scrollbar { width: 4px; }
+.xm-mod-grid::-webkit-scrollbar-thumb { background: rgba(180,150,170,.25); border-radius: 4px; }
+
+/* 小屏微调 */
+@media (max-width: 480px) {
+  #xiaoman-wrap { right: 8px; }
+  #xm-doll { width: 92px; height: 92px; }
+  .xm-menu { width: 128px; }
+}
+

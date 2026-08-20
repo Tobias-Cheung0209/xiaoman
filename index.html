@@ -6,16 +6,16 @@
   <meta name="theme-color" content="#66B6FF">
   <title>小满</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icon.svg?v=12" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=12">
-  <link rel="icon" sizes="192x192" href="icon-192.png?v=12">
-  <link rel="icon" sizes="512x512" href="icon-512.png?v=12">
+  <link rel="icon" href="icon.svg?v=13" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=13">
+  <link rel="icon" sizes="192x192" href="icon-192.png?v=13">
+  <link rel="icon" sizes="512x512" href="icon-512.png?v=13">
   <!-- iOS PWA 全屏 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="小满">
-  <link rel="stylesheet" href="css/style.css?v=12">
-  <link rel="stylesheet" href="css/app-v2.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/app-v2.css?v=13">
 </head>
 <body>
   <!-- 梦幻背景装饰 -->
@@ -55,6 +55,63 @@
 
   <div id="backdrop"></div>
 
+  <!-- 小满吉祥物：全局导航入口（可拖拽） -->
+  <div id="xiaoman-wrap" class="xm-idle">
+    <div id="xm-panel" class="xm-panel" hidden>
+      <div class="xm-panel-head">
+        <span class="xm-panel-title">全部模块</span>
+        <button class="xm-panel-close" id="xm-panel-close" aria-label="关闭">×</button>
+      </div>
+      <input id="xm-search" class="xm-search" type="search" placeholder="搜索模块…" autocomplete="off">
+      <div id="xm-mod-grid" class="xm-mod-grid"></div>
+    </div>
+    <div id="xm-menu" class="xm-menu">
+      <button class="xm-menu-item" data-act="add">📝 快速新建</button>
+      <button class="xm-menu-item" data-act="say">💬 一句话</button>
+      <button class="xm-menu-item" data-act="modules">🧭 全部模块</button>
+      <button class="xm-menu-item" data-act="settings">⚙️ 设置</button>
+    </div>
+    <div id="xm-bubble" class="xm-bubble" hidden></div>
+    <button id="xm-doll" aria-label="小满吉祥物">
+      <svg id="xm-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <g class="xm-body">
+          <path d="M48 168 C48 138 72 122 100 122 C128 122 152 138 152 168 L152 190 L48 190 Z" fill="#FFD9E4"/>
+          <path d="M64 178 C64 154 80 140 100 140 C120 140 136 154 136 178" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+        </g>
+        <g class="xm-head">
+          <circle cx="100" cy="92" r="60" fill="#FFF7F9"/>
+          <path d="M40 92 C40 48 70 28 100 28 C130 28 160 48 160 92" fill="none" stroke="#FFE3EA" stroke-width="3"/>
+        </g>
+        <g class="xm-hair">
+          <circle cx="58" cy="52" r="26" fill="#C9E8FF"/>
+          <circle cx="98" cy="34" r="30" fill="#A8D8FF"/>
+          <circle cx="142" cy="54" r="24" fill="#FFC9DC"/>
+          <circle cx="70" cy="36" r="18" fill="#E0F4FF"/>
+          <circle cx="128" cy="40" r="16" fill="#FFD9E4"/>
+        </g>
+        <g class="xm-eyes">
+          <g class="xm-eye xm-eye-l">
+            <ellipse cx="76" cy="98" rx="12" ry="15" fill="#FFFFFF" stroke="#F4C0D1" stroke-width="1.5"/>
+            <circle cx="77" cy="100" r="7.5" fill="#2D3748"/>
+            <circle cx="80" cy="95" r="3" fill="#FFFFFF"/>
+            <circle cx="73.5" cy="103" r="1.6" fill="#FFFFFF"/>
+          </g>
+          <g class="xm-eye xm-eye-r">
+            <ellipse cx="124" cy="98" rx="12" ry="15" fill="#FFFFFF" stroke="#F4C0D1" stroke-width="1.5"/>
+            <circle cx="123" cy="100" r="7.5" fill="#2D3748"/>
+            <circle cx="126" cy="95" r="3" fill="#FFFFFF"/>
+            <circle cx="119.5" cy="103" r="1.6" fill="#FFFFFF"/>
+          </g>
+        </g>
+        <ellipse class="xm-blush xm-blush-l" cx="57" cy="116" rx="11" ry="6.5" fill="#FFB8C4" opacity="0.75"/>
+        <ellipse class="xm-blush xm-blush-r" cx="143" cy="116" rx="11" ry="6.5" fill="#FFB8C4" opacity="0.75"/>
+        <g class="xm-mouth">
+          <path d="M88 118 Q100 129 112 118" fill="none" stroke="#E86C7D" stroke-width="3.6" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </button>
+  </div>
+
   <!-- 弹窗 -->
   <div id="modal">
     <div id="modal-box">
@@ -66,16 +123,18 @@
     </div>
   </div>
 
-  <script src="js/config.js?v=12"></script>
-  <script src="js/store.js?v=12"></script>
-  <script src="js/topbar.js?v=12"></script>
-  <script src="js/app.js?v=12"></script>
+  <script src="js/config.js?v=13"></script>
+  <script src="js/store.js?v=13"></script>
+  <script src="js/topbar.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
+  <script src="js/xiaoman.js?v=13"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {
       Topbar.init();
       App.init();
+      Xiaoman.init();
       if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js?v=12').catch(function () {});
+        navigator.serviceWorker.register('sw.js?v=13').catch(function () {});
       }
     });
   </script>

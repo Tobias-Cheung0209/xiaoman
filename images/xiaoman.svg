@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <g class="xm-body">
+    <path d="M48 168 C48 138 72 122 100 122 C128 122 152 138 152 168 L152 190 L48 190 Z" fill="#FFD9E4"/>
+    <path d="M64 178 C64 154 80 140 100 140 C120 140 136 154 136 178" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+  </g>
+  <g class="xm-head">
+    <circle cx="100" cy="92" r="60" fill="#FFF7F9"/>
+    <path d="M40 92 C40 48 70 28 100 28 C130 28 160 48 160 92" fill="none" stroke="#FFE3EA" stroke-width="3"/>
+  </g>
+  <g class="xm-hair">
+    <circle cx="58" cy="52" r="26" fill="#C9E8FF"/>
+    <circle cx="98" cy="34" r="30" fill="#A8D8FF"/>
+    <circle cx="142" cy="54" r="24" fill="#FFC9DC"/>
+    <circle cx="70" cy="36" r="18" fill="#E0F4FF"/>
+    <circle cx="128" cy="40" r="16" fill="#FFD9E4"/>
+  </g>
+  <g class="xm-eyes">
+    <g class="xm-eye xm-eye-l">
+      <ellipse cx="76" cy="98" rx="12" ry="15" fill="#FFFFFF" stroke="#F4C0D1" stroke-width="1.5"/>
+      <circle cx="77" cy="100" r="7.5" fill="#2D3748"/>
+      <circle cx="80" cy="95" r="3" fill="#FFFFFF"/>
+      <circle cx="73.5" cy="103" r="1.6" fill="#FFFFFF"/>
+    </g>
+    <g class="xm-eye xm-eye-r">
+      <ellipse cx="124" cy="98" rx="12" ry="15" fill="#FFFFFF" stroke="#F4C0D1" stroke-width="1.5"/>
+      <circle cx="123" cy="100" r="7.5" fill="#2D3748"/>
+      <circle cx="126" cy="95" r="3" fill="#FFFFFF"/>
+      <circle cx="119.5" cy="103" r="1.6" fill="#FFFFFF"/>
+    </g>
+  </g>
+  <ellipse class="xm-blush xm-blush-l" cx="57" cy="116" rx="11" ry="6.5" fill="#FFB8C4" opacity="0.75"/>
+  <ellipse class="xm-blush xm-blush-r" cx="143" cy="116" rx="11" ry="6.5" fill="#FFB8C4" opacity="0.75"/>
+  <g class="xm-mouth">
+    <path d="M88 118 Q100 129 112 118" fill="none" stroke="#E86C7D" stroke-width="3.6" stroke-linecap="round"/>
+  </g>
+</svg>
