@@ -63,24 +63,60 @@ const Topbar = (function () {
   }
 
   /* ---------- 最近纪念日/生日（供 Hero/首页提醒） ---------- */
+  /* 计算单个重要日期的下次发生日（支持 repeatCycle：不重复/每日/每周/每月/每年） */
+  function nextOccurrence(dateStr, repeatCycle, today) {
+    const parts = (dateStr || '').split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    const cyc = repeatCycle || '每年';
+    const [y, m, d] = parts;
+    if (cyc === '每日') return new Date(today);
+    if (cyc === '每周') {
+      const wd = new Date(y, m - 1, d).getDay(); // 原日期的星期几
+      let dd = new Date(today);
+      while (dd.getDay() !== wd) dd.setDate(dd.getDate() + 1);
+      return dd;
+    }
+    if (cyc === '每月') {
+      let dd = new Date(today.getFullYear(), today.getMonth(), d);
+      if (dd < today) dd = new Date(today.getFullYear(), today.getMonth() + 1, d);
+      return dd;
+    }
+    // 每年 / 不重复
+    let dd = new Date(today.getFullYear(), m - 1, d);
+    if (dd < today) {
+      if (cyc === '不重复') return null;
+      dd = new Date(today.getFullYear() + 1, m - 1, d);
+    }
+    return dd;
+  }
   function getNextEvent() {
     const list = Store.getList('events');
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const daysTo = (dateStr, repeatYearly) => {
-      if (!dateStr) return Infinity;
-      const parts = dateStr.split('-').map(Number);
-      if (parts.length !== 3 || parts.some(isNaN)) return Infinity;
-      const [y, m, d] = parts;
-      let next = new Date(today.getFullYear(), m - 1, d);
-      if (repeatYearly && next < today) next.setFullYear(today.getFullYear() + 1);
-      else if (next < today) return Infinity;
-      return Math.round((next - today) / 86400000);
-    };
     const scored = list
-      .map(r => ({ r, days: daysTo(r.date, r.repeatYearly) }))
-      .filter(x => x.days !== Infinity && x.days >= 0)
+      .map(r => {
+        const occ = nextOccurrence(r.date, r.repeatCycle, today);
+        if (!occ) return null;
+        const days = Math.round((occ - today) / 86400000);
+        return (days >= 0) ? { r, days } : null;
+      })
+      .filter(Boolean)
       .sort((a, b) => a.days - b.days);
     return scored.length ? scored[0] : null;
+  }
+  /* 首页横幅：返回未来 remindDays 窗口内（含今天）的所有重要日期 */
+  function getUpcomingEvents() {
+    const list = Store.getList('events');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const out = [];
+    list.forEach(r => {
+      const occ = nextOccurrence(r.date, r.repeatCycle, today);
+      if (!occ) return;
+      const days = Math.round((occ - today) / 86400000);
+      const remind = parseInt(r.remindDays) || 0;
+      // remindDays=0 → 仅当天提醒；否则提前 remind 天起提醒
+      if (days >= 0 && days <= Math.max(remind, 0)) out.push({ r, days });
+    });
+    return out.sort((a, b) => a.days - b.days);
   }
 
   /* ---------- 暴露 ---------- */
@@ -93,5 +129,5 @@ const Topbar = (function () {
     loadWeather();
   }
 
-  return { init, renderProfile, getWeatherText, getQuoteHtml, getNextEvent };
+  return { init, renderProfile, getWeatherText, getQuoteHtml, getNextEvent, getUpcomingEvents };
 })();

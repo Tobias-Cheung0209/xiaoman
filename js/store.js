@@ -66,7 +66,7 @@ const Store = (function () {
       const k = keyOf(tabOrId);
       const arr = data.collections[k] || [];
       const i = arr.findIndex(r => r._id === id);
-      if (i >= 0) { arr[i] = Object.assign({}, arr[i], rec); data.collections[k] = arr; persist(); }
+      if (i >= 0) { arr[i] = Object.assign({}, arr[i], rec, { updatedAt: new Date().toISOString() }); data.collections[k] = arr; persist(); }
     },
     deleteRecord(tabOrId, id) {
       const k = keyOf(tabOrId);
@@ -103,5 +103,117 @@ const Store = (function () {
         return false;
       }
     },
+    /* 合并导入（v19-①）：按 _id 去重，取 updatedAt/_created 较新者；无 _id 视为新记录；设置浅合并（导入覆盖本地） */
+    mergeAll(json) {
+      try {
+        const d = JSON.parse(json);
+        if (!d.collections) d.collections = {};
+        if (!d.settings) d.settings = {};
+        Object.keys(d.collections).forEach(k => {
+          const incoming = d.collections[k] || [];
+          const cur = data.collections[k] || [];
+          const map = {};
+          cur.forEach(r => { if (r && r._id) map[r._id] = r; });
+          incoming.forEach(r => {
+            if (r && r._id && map[r._id]) {
+              const tNew = new Date(r.updatedAt || r._created || 0).getTime();
+              const tOld = new Date(map[r._id].updatedAt || map[r._id]._created || 0).getTime();
+              if (tNew >= tOld) map[r._id] = r;
+            } else if (r && r._id) {
+              map[r._id] = r;
+            } else {
+              const nr = Object.assign({}, r);
+              nr._id = 'r' + Date.now() + Math.floor(Math.random() * 100000);
+              nr._created = nr._created || new Date().toISOString();
+              map[nr._id] = nr;
+            }
+          });
+          data.collections[k] = Object.values(map);
+        });
+        data.settings = Object.assign({}, data.settings, d.settings);
+        persist();
+        return true;
+      } catch (e) {
+        console.error(e);
+        return false;
+      }
+    },
+    /* 导出 XMS1 短码：deflate-raw + base64，前缀 XMS1: */
+    async encodeShort() {
+      const json = JSON.stringify(data);
+      const bytes = new TextEncoder().encode(json);
+      const compressed = await deflateBytes(bytes);
+      return 'XMS1:' + bytesToBase64(compressed);
+    },
+    /* 解析 XMS1 短码，返回 JSON 字符串（供 mergeAll 消费） */
+    async decodeShort(str) {
+      let s = (str || '').trim();
+      if (s.startsWith('XMS1:')) s = s.slice(5);
+      const bytes = base64ToBytes(s);
+      const json = await inflateBytes(bytes);
+      return json;
+    },
   };
+
+  /* ---- 压缩 / 编码辅助（基于原生 CompressionStream，无依赖） ---- */
+  function deflateBytes(bytes) {
+    if (typeof CompressionStream === 'undefined') return Promise.reject(new Error('no-compression'));
+    return new Promise((resolve, reject) => {
+      try {
+        const cs = new CompressionStream('deflate-raw');
+        const writer = cs.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const reader = cs.readable.getReader();
+        const chunks = [];
+        const pump = () => reader.read().then(({ done, value }) => {
+          if (done) { resolve(concatBytes(chunks)); return; }
+          chunks.push(value); pump();
+        }).catch(reject);
+        pump();
+      } catch (e) { reject(e); }
+    });
+  }
+  function inflateBytes(bytes) {
+    if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('no-compression'));
+    return new Promise((resolve, reject) => {
+      try {
+        const ds = new DecompressionStream('deflate-raw');
+        const writer = ds.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const reader = ds.readable.getReader();
+        const chunks = [];
+        const pump = () => reader.read().then(({ done, value }) => {
+          if (done) {
+            const buf = concatBytes(chunks);
+            resolve(new TextDecoder().decode(buf));
+            return;
+          }
+          chunks.push(value); pump();
+        }).catch(reject);
+        pump();
+      } catch (e) { reject(e); }
+    });
+  }
+  function concatBytes(chunks) {
+    let len = 0; chunks.forEach(c => len += c.length);
+    const out = new Uint8Array(len); let off = 0;
+    chunks.forEach(c => { out.set(c, off); off += c.length; });
+    return out;
+  }
+  function bytesToBase64(bytes) {
+    let bin = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(bin);
+  }
+  function base64ToBytes(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
 })();

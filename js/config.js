@@ -2,7 +2,8 @@
  * 配置中心（V3）：模块、字段、名言库、股票自选
  * group: 'work' => 蓝色系（工作 / 自律·成长 / 核心）
  *        'life' => 红色系（生活 / 旅行 / 娱乐 / 文件区）
- * 字段类型：text/textarea/number/date/select/checkbox/multicheck/image
+ * 字段类型：text/textarea/number/date/select/selectOther/checkbox/multicheck/image
+ *   selectOther：下拉含「其他」，选「其他」后下方出现文本框，可手写自定义值
  * tab.collection：多 Tab 共享同一 Store 集合（覆盖 tab.id）
  * tab.special：特例渲染标识（对应 app.js 渲染函数）
  * ============================================================ */
@@ -11,6 +12,31 @@ const APP_NAME = '小满';
 
 /* 固定座右铭（不再轮换词库） */
 const MOTTO = '日拱一卒无有尽，功不唐捐终入海。';
+
+/* 状态灯配色（已定） */
+const STATUS_COLORS = {
+  '计划': '#fa60e0',   /* 粉紫 */
+  '进行中': '#facc15', /* 黄 */
+  '已完成': '#4ade80', /* 绿 */
+};
+
+/* 购物分类配色（v20） */
+const SHOP_CAT_COLORS = {
+  '护肤': '#FF9AB2',
+  '数码': '#6EB8FF',
+  '家居': '#9D8DF1',
+  '服饰': '#FFB36B',
+  '食品': '#7FD18A',
+  '其他': '#B8C2D0',
+};
+
+/* 旅行状态（三态）与图钉配色 */
+const TRAVEL_STATUS = ['想去', '计划中', '已打卡'];
+const TRAVEL_PIN_COLOR = {
+  '想去': '#fb923c',   /* 橙 */
+  '计划中': '#3b82f6', /* 蓝 */
+  '已打卡': '#4ade80', /* 绿 */
+};
 
 /* 股票自选：group cn/us 重点，jp/kr 其次，other 一笔带过 */
 const STOCK_WATCH = [
@@ -83,19 +109,19 @@ const MODULES = [
     ],
   },
 
-  /* ---- 学习专区（工作·蓝） ---- */
+  /* ---- 学习区（工作·蓝，原「学习专区」改名） ---- */
   {
-    id: 'study', name: '学习专区', icon: '📚', group: 'work', render: 'tabs',
+    id: 'study', name: '学习区', icon: '📚', group: 'work', render: 'tabs',
     desc: '下班后 · 股票/摄影/音乐',
     tabs: [
       {
         id: 'today', name: '今日内容', type: 'list', collection: 'studyTasks', special: 'studyToday',
         fields: [
-          { key: 'topic', label: '主题', type: 'select', options: ['股票', '摄影', '音乐', '其他'], def: '股票' },
+          { key: 'topic', label: '主题', type: 'selectOther', options: ['股票', '摄影', '音乐', '其他'], def: '股票' },
           { key: 'goal', label: '今日目标', type: 'textarea' },
           { key: 'summary', label: '学习小结', type: 'textarea', ph: '3-2-1 法 → ① 3 个收获 ② 2 个疑问 ③ 1 个行动' },
           { key: 'ref', label: '资料参考', type: 'text' },
-          { key: 'duration', label: '时长(分)', type: 'number' },
+          { key: 'duration', label: '时长(小时)', type: 'number', ph: '如 1.5 表示 1.5 小时' },
           { key: 'date', label: '日期', type: 'date' },
           { key: 'status', label: '状态', type: 'select', options: ['计划', '进行中', '已完成'], def: '计划' },
         ],
@@ -103,11 +129,11 @@ const MODULES = [
       {
         id: 'history', name: '历史记录', type: 'list', collection: 'studyTasks', special: 'studyHistory',
         fields: [
-          { key: 'topic', label: '主题', type: 'select', options: ['股票', '摄影', '音乐', '其他'], def: '股票' },
+          { key: 'topic', label: '主题', type: 'selectOther', options: ['股票', '摄影', '音乐', '其他'], def: '股票' },
           { key: 'goal', label: '今日目标', type: 'textarea' },
           { key: 'summary', label: '学习小结', type: 'textarea', ph: '3-2-1 法 → ① 3 个收获 ② 2 个疑问 ③ 1 个行动' },
           { key: 'ref', label: '资料参考', type: 'text' },
-          { key: 'duration', label: '时长(分)', type: 'number' },
+          { key: 'duration', label: '时长(小时)', type: 'number', ph: '如 1.5 表示 1.5 小时' },
           { key: 'date', label: '日期', type: 'date' },
           { key: 'status', label: '状态', type: 'select', options: ['计划', '进行中', '已完成'], def: '计划' },
         ],
@@ -115,11 +141,14 @@ const MODULES = [
     ],
   },
 
-  /* ---- 生活（生活·红，原「生活购物」改名+整合） ---- */
+  /* ---- 生活（生活·红） ---- */
   {
     id: 'life', name: '生活', icon: '🌸', group: 'life', render: 'tabs',
-    desc: '购物 · 纪念日 · 家居 · 礼物',
+    desc: '收支 · 购物 · 重要日子 · 居家 · 人物',
     tabs: [
+      {
+        id: 'budget', name: '收支情况', type: 'budget', currency: '€',
+      },
       {
         id: 'items', name: '购物清单', type: 'list', collection: 'items', special: 'shopping',
         fields: [
@@ -134,45 +163,30 @@ const MODULES = [
         ],
       },
       {
-        id: 'budget', name: '收支情况', type: 'budget', currency: '€',
-      },
-      {
-        id: 'events', name: '纪念日', type: 'list', collection: 'events', special: 'eventsCard',
+        id: 'events', name: '重要日期', type: 'list', collection: 'events', special: 'eventsCard',
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'date', label: '日期', type: 'date', required: true },
-          { key: 'type', label: '类型', type: 'select', options: ['生日', '恋爱', '家人生日', '重要日期'], def: '生日' },
-          { key: 'repeatYearly', label: '每年重复', type: 'checkbox' },
+          { key: 'type', label: '类型', type: 'selectOther', options: ['生日', '恋爱', '家人生日', '重要日期', '其他'], def: '生日' },
+          { key: 'repeatCycle', label: '重复周期', type: 'select', options: ['不重复', '每日', '每周', '每月', '每年'], def: '每年' },
           { key: 'remindDays', label: '提前提醒(天)', type: 'number', def: 0 },
           { key: 'note', label: '备注', type: 'text' },
         ],
       },
       {
-        id: 'homeTodos', name: '家居待办', type: 'filter', source: 'lifeTodos', domains: ['生活', '家务'],
-        fields: [
-          { key: 'item', label: '事项', type: 'text', required: true },
-          { key: 'domain', label: '领域', type: 'select', options: ['生活', '家务', '其他'], def: '家务' },
-          { key: 'due', label: '截止日', type: 'date' },
-          { key: 'priority', label: '优先级', type: 'select', options: ['高', '中', '低'], def: '中' },
-          { key: 'status', label: '状态', type: 'select', options: ['待办', '完成'], def: '待办' },
-        ],
+        id: 'homeThings', name: '居家事项', type: 'list', special: 'homeThings',
+        fields: [],
       },
       {
-        id: 'gifts', name: '礼物计划', type: 'list', collection: 'gifts',
+        id: 'people', name: '人物档案', type: 'list', special: 'people',
         fields: [
-          { key: 'to', label: '送给谁', type: 'text', required: true },
-          { key: 'idea', label: '想法', type: 'textarea' },
-          { key: 'budget', label: '预算', type: 'number' },
-          { key: 'bought', label: '购买状态', type: 'select', options: ['未买', '已买'], def: '未买' },
-          { key: 'linkEvent', label: '关联纪念日', type: 'text' },
-          { key: 'note', label: '备注', type: 'text' },
-        ],
-      },
-      {
-        id: 'sizes', name: '尺寸档案', type: 'list', collection: 'sizes',
-        fields: [
-          { key: 'part', label: '部位', type: 'select', options: ['衣', '鞋', '戒指', '裤', '其他'], def: '衣' },
-          { key: 'size', label: '尺寸', type: 'text', required: true },
+          { key: 'name', label: '姓名', type: 'text', required: true },
+          { key: 'relation', label: '关系', type: 'selectOther', options: ['我', '恋人', '家人', '朋友', '同事', '其他'], def: '朋友' },
+          { key: 'height', label: '身高(cm)', type: 'text' },
+          { key: 'weight', label: '体重(kg)', type: 'text' },
+          { key: 'shoe', label: '鞋码', type: 'text' },
+          { key: 'clothesSize', label: '衣物尺码', type: 'text' },
+          { key: 'prefer', label: '偏好/禁忌', type: 'textarea', ph: '喜欢颜色/风格、材质过敏、尺码偏好等' },
           { key: 'note', label: '备注', type: 'text' },
         ],
       },
@@ -182,21 +196,23 @@ const MODULES = [
   /* ---- 旅行（生活·红） ---- */
   {
     id: 'travel', name: '旅行', icon: '✈️', group: 'life', render: 'tabs',
-    desc: '打卡清单 · 飞书攻略',
+    desc: '打卡清单 · 旅行总览',
     tabs: [
+      {
+        id: 'overview', name: '旅行总览', type: 'list', special: 'travelOverview',
+        fields: [],
+      },
       {
         id: 'destinations', name: '目的地', type: 'list', collection: 'destinations', special: 'travelDest',
         fields: [
           { key: 'city', label: '城市/国家', type: 'text', required: true },
-          { key: 'thumb', label: '缩略图(url)', type: 'text' },
-          { key: 'status', label: '状态', type: 'select', options: ['待打卡', '已打卡'], def: '待打卡' },
+          { key: 'status', label: '状态', type: 'select', options: ['想去', '计划中', '已打卡'], def: '想去' },
           { key: 'spots', label: '必打卡景点', type: 'textarea' },
-          { key: 'ticket', label: '票价', type: 'text' },
-          { key: 'transport', label: '交通', type: 'text' },
           { key: 'food', label: '美食', type: 'text' },
-          { key: 'goDate', label: '出行日期', type: 'date' },
+          { key: 'goDate', label: '计划出行日期', type: 'date' },
+          { key: 'travelDays', label: '旅行天数', type: 'number' },
           { key: 'budget', label: '预算', type: 'number' },
-          { key: 'feishu', label: '完整攻略(飞书链接)', type: 'text' },
+          { key: 'feishu', label: '详细攻略(链接)', type: 'text' },
         ],
       },
     ],
@@ -215,7 +231,6 @@ const MODULES = [
           { key: 'status', label: '状态', type: 'select', options: ['想看', '在看', '看完', '弃了'], def: '想看' },
           { key: 'rating', label: '评分', type: 'number' },
           { key: 'tags', label: '类型标签', type: 'multicheck', options: ['科幻', '悬疑', '治愈', '搞笑', '热血', '其他'] },
-          { key: 'platform', label: '平台', type: 'select', options: ['Netflix', 'B站', 'PS5', 'Steam', '其他'], def: '其他' },
           { key: 'len', label: '时长/集数', type: 'text' },
           { key: 'review', label: '短评', type: 'textarea' },
           { key: 'date', label: '日期', type: 'date' },
@@ -254,6 +269,7 @@ const MODULES = [
           { key: 'item', label: '事项', type: 'text', required: true },
           { key: 'domain', label: '领域', type: 'select', options: ['生活', '家务', '其他'], def: '生活' },
           { key: 'due', label: '截止日', type: 'date' },
+          { key: 'timeRange', label: '时间段', type: 'text', ph: '如 14:00-15:30 或 全天' },
           { key: 'priority', label: '优先级', type: 'select', options: ['高', '中', '低'], def: '中' },
           { key: 'status', label: '状态', type: 'select', options: ['待办', '完成'], def: '待办' },
         ],
@@ -281,18 +297,10 @@ const MODULES = [
         fields: [
           { key: 'date', label: '日期', type: 'date', required: true },
           { key: 'item', label: '运动项目', type: 'text', required: true },
-          { key: 'duration', label: '时长(分)', type: 'number' },
+          { key: 'duration', label: '时长(小时)', type: 'text', ph: '如 2小时 / 1.5小时' },
           { key: 'calories', label: '消耗(kcal)', type: 'number' },
           { key: 'done', label: '完成', type: 'checkbox' },
           { key: 'photo', label: '运动照', type: 'image' },
-        ],
-      },
-      {
-        id: 'fitPlan', name: '明日提醒', type: 'list', collection: 'plan',
-        fields: [
-          { key: 'date', label: '计划日', type: 'date', required: true },
-          { key: 'plan', label: '计划内容', type: 'text', required: true },
-          { key: 'durationGoal', label: '时长目标(分)', type: 'number' },
         ],
       },
       {
@@ -305,11 +313,12 @@ const MODULES = [
         ],
       },
       {
-        id: 'skincare', name: '护肤打卡', type: 'list', collection: 'skincare',
+        id: 'skincare', name: '个人护理记录', type: 'list', collection: 'skincare', special: 'skincare',
         fields: [
           { key: 'date', label: '日期', type: 'date', required: true },
-          { key: 'morningC', label: '早C', type: 'checkbox' },
-          { key: 'nightA', label: '晚A', type: 'checkbox' },
+          { key: 'morning', label: '早间护理', type: 'multicheck', options: ['清洁', '补水', '烟酰胺', '维C', '日霜'], def: ['清洁', '补水', '烟酰胺', '维C', '日霜'] },
+          { key: 'night', label: '晚间护理', type: 'multicheck', options: ['清洁', '面膜', '补水', 'A醇/去红斑', '夜霜'], def: ['清洁', '面膜', '补水', 'A醇/去红斑', '夜霜'] },
+          { key: 'extra', label: '其他(手动录入)', type: 'text', ph: '如 二硫化硒洗头' },
           { key: 'conditions', label: '皮肤状态', type: 'multicheck', options: ['干燥', '出油', '痘痘', '敏感', '好'] },
           { key: 'photo', label: '照片', type: 'image' },
           { key: 'note', label: '笔记', type: 'textarea' },
@@ -320,7 +329,7 @@ const MODULES = [
         fields: [
           { key: 'date', label: '日期', type: 'date', required: true },
           { key: 'weight', label: '体重(kg)', type: 'number', required: true },
-          { key: 'bodyfat', label: '体脂(%)', type: 'number' },
+          { key: 'bodyfat', label: '体脂', type: 'text', ph: '可填 22.5% 或 高于25% 等' },
           { key: 'goal', label: '目标体重', type: 'number' },
           { key: 'note', label: '备注', type: 'text' },
         ],
@@ -328,7 +337,7 @@ const MODULES = [
     ],
   },
 
-  /* ---- 日拱一卒（自律·成长·蓝，方案 B） ---- */
+  /* ---- 日拱一卒（自律·成长·蓝） ---- */
   {
     id: 'rigong', name: '日拱一卒', icon: '📖', group: 'work', render: 'tabs',
     desc: '拱卒热力 · 今日一得',
@@ -361,19 +370,8 @@ const MODULES = [
         id: 'assets', name: '资产', type: 'list', collection: 'moneyAssets',
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
-          { key: 'type', label: '类型', type: 'select', options: ['现金', '储蓄', '投资', '其他'], def: '储蓄' },
+          { key: 'type', label: '类型', type: 'selectOther', options: ['现金', '储蓄', '投资', '其他'], def: '储蓄' },
           { key: 'amount', label: '金额', type: 'number', required: true },
-          { key: 'note', label: '备注', type: 'text' },
-        ],
-      },
-      {
-        id: 'invest', name: '投资市值', type: 'list', collection: 'moneyInvest',
-        fields: [
-          { key: 'code', label: '代码', type: 'text' },
-          { key: 'name', label: '名称', type: 'text', required: true },
-          { key: 'qty', label: '数量', type: 'number' },
-          { key: 'cost', label: '成本', type: 'number' },
-          { key: 'price', label: '现价', type: 'number' },
           { key: 'note', label: '备注', type: 'text' },
         ],
       },
@@ -418,10 +416,10 @@ const MODULES = [
     ],
   },
 
-  /* ---- 工具箱（核心·蓝，原「其它工具」改名） ---- */
+  /* ---- 工具箱（核心·蓝） ---- */
   {
     id: 'toolbox', name: '工具箱', icon: '🧰', group: 'work', render: 'tabs',
-    desc: '通讯录 · 我们❤️ · 经期',
+    desc: '通讯录 · 柚子',
     tabs: [
       {
         id: 'contacts', name: '朋友通讯录', type: 'list', collection: 'contacts',
@@ -436,23 +434,8 @@ const MODULES = [
         ],
       },
       {
-        id: 'women', name: '我们❤️', type: 'list', collection: 'women',
-        fields: [
-          { key: 'date', label: '日期', type: 'date', required: true },
-          { key: 'item', label: '项目', type: 'select', options: ['经期', '同房', '其它'], def: '经期' },
-          { key: 'flow', label: '流量', type: 'select', options: ['多', '中', '少', '—'], def: '—' },
-          { key: 'symptom', label: '症状', type: 'text' },
-          { key: 'mood', label: '心情', type: 'select', options: ['平静', '愉悦', '烦躁', '低落', '其他'], def: '平静' },
-          { key: 'note', label: '备注', type: 'textarea' },
-        ],
-      },
-      {
-        id: 'womenSettings', name: '经期设置', type: 'settings',
-        fields: [
-          { key: 'cycleStart', label: '上次开始日', type: 'date' },
-          { key: 'cycleLen', label: '周期长度(天)', type: 'number', def: 28 },
-          { key: 'remind', label: '提前提醒', type: 'checkbox' },
-        ],
+        id: 'youzi', name: '柚子', type: 'list', special: 'youzi',
+        fields: [],
       },
     ],
   },

@@ -946,3 +946,167 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
   .xm-panel { width: min(320px, 88vw); }
 }
 
+/* ============================================================
+ * V19 / V20 新增样式
+ * ============================================================ */
+
+/* 基础按钮（脱离 form-actions 也具备样式） */
+.btn-primary {
+  border: none; background: var(--work); color: #fff;
+  padding: 10px 18px; border-radius: 12px; font-size: 13px; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(110,184,255,.30);
+}
+.btn-primary:active { transform: scale(.97); }
+.group-life .btn-primary { background: var(--life); box-shadow: 0 4px 12px rgba(255,154,174,.30); }
+.btn-secondary {
+  border: 1px solid rgba(220,230,245,.8); background: var(--surface); color: var(--text-2);
+  padding: 10px 18px; border-radius: 12px; font-size: 13px; cursor: pointer; display: inline-block;
+}
+.btn-secondary:active { transform: scale(.97); }
+
+/* 状态灯 */
+.status-dot {
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  margin-right: 5px; vertical-align: middle; flex-shrink: 0;
+}
+
+/* 卡片三点菜单（⋯） */
+.card-menu-wrap { position: relative; display: inline-block; }
+.card-menu-btn {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 18px; line-height: 1; color: var(--text-3);
+  padding: 2px 8px; border-radius: 8px;
+}
+.card-menu-btn:hover { background: rgba(220,230,245,.5); }
+.card-menu {
+  display: none; position: absolute; right: 0; top: 115%;
+  background: var(--surface); border: 1px solid rgba(220,230,245,.8);
+  border-radius: 12px; box-shadow: var(--shadow-float); z-index: 30;
+  overflow: hidden; min-width: 84px;
+}
+.card-menu.open { display: block; }
+.card-menu button {
+  display: block; width: 100%; text-align: left; border: none; background: transparent;
+  padding: 9px 14px; font-size: 13px; color: var(--text-2); cursor: pointer;
+}
+.card-menu button:hover { background: rgba(120,180,255,.12); }
+.card-menu button.danger { color: var(--life-deep); }
+.card-menu button.danger:hover { background: rgba(255,154,174,.18); }
+
+/* 购物分类色徽 */
+.cat-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; }
+
+/* 学习本周热力条 */
+.wk-heat { display: flex; gap: 6px; align-items: flex-end; height: 64px; margin-top: 6px; }
+.wk-cell { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; flex: 1; height: 100%; }
+.wk-bar { width: 100%; max-width: 22px; border-radius: 6px 6px 4px 4px; background: rgba(220,230,245,.4); height: 6px; transition: .2s; }
+.wk-bar.l1 { height: 18px; background: rgba(110,184,255,.35); }
+.wk-bar.l2 { height: 30px; background: rgba(110,184,255,.55); }
+.wk-bar.l3 { height: 44px; background: rgba(110,184,255,.78); }
+.wk-bar.l4 { height: 58px; background: rgba(110,184,255,.95); }
+.wk-day { font-size: 11px; color: var(--text-3); }
+.group-life .wk-bar.l1 { background: rgba(255,154,174,.35); }
+.group-life .wk-bar.l2 { background: rgba(255,154,174,.55); }
+.group-life .wk-bar.l3 { background: rgba(255,154,174,.78); }
+.group-life .wk-bar.l4 { background: rgba(255,154,174,.95); }
+
+/* 迷你条形（主题时长分布） */
+.mini-bars { display: flex; flex-direction: column; gap: 8px; }
+.mbar { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.mbar > span { width: 46px; flex-shrink: 0; color: var(--text-2); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mbar-track { flex: 1; height: 10px; background: rgba(220,230,245,.5); border-radius: 6px; overflow: hidden; }
+.mbar-fill { height: 100%; background: linear-gradient(90deg, #A8D8FF, #6EB8FF); border-radius: 6px; }
+.group-life .mbar-fill { background: linear-gradient(90deg, #FFD0DC, #FF9AB2); }
+.mbar > b { width: 46px; flex-shrink: 0; text-align: left; color: var(--text-2); }
+
+/* 旅行图标按钮（打卡） */
+.travel-check {
+  border: none; background: var(--work); color: #fff;
+  padding: 7px 16px; border-radius: 999px; font-size: 13px; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(110,184,255,.35);
+}
+.travel-check:active { transform: scale(.96); }
+.group-life .travel-check { background: var(--life); box-shadow: 0 4px 12px rgba(255,154,174,.35); }
+
+/* 旅行总览：复古双地图 */
+.travel-maps { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+@media (max-width: 560px) { .travel-maps { grid-template-columns: 1fr; } }
+.travel-map { background: var(--surface); border-radius: var(--radius-lg); padding: 12px; box-shadow: var(--shadow-card); }
+.travel-map-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; text-align: center; color: var(--text-2); }
+.travel-map-svg { width: 100%; height: auto; display: block; }
+.travel-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); align-items: center; margin-top: 8px; }
+.travel-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.travel-legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.travel-nogeo { font-size: 12px; color: var(--text-3); background: rgba(220,230,245,.35); border-radius: 12px; padding: 8px 12px; margin-top: 10px; }
+
+/* 个人护理 chips */
+.care-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.care-chip { font-size: 11px; padding: 3px 9px; border-radius: 999px; color: var(--text); }
+.care-none { font-size: 12px; color: var(--text-3); }
+
+/* 预测 / 提示条 */
+.predict { background: rgba(110,184,255,.10); color: var(--work-deep); border-radius: 14px; padding: 10px 14px; font-size: 13px; }
+.group-life .predict { background: rgba(255,154,174,.12); color: var(--life-deep); }
+
+/* 设置盒子 / 表单行 */
+.settings-box { background: var(--surface); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-card); }
+.form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.form-row label { font-size: 13px; color: var(--text-2); }
+.form-row label i { color: var(--life-deep); font-style: normal; margin-left: 2px; }
+.form-row input, .form-row textarea, .form-row select {
+  padding: 10px 12px; border: 1px solid rgba(220,230,245,.8); border-radius: 12px;
+  background: var(--surface-2); font-size: 14px; color: var(--text);
+}
+.form-row input:focus, .form-row textarea:focus, .form-row select:focus { outline: none; border-color: rgba(110,184,255,.7); }
+
+/* 占位提示 */
+.empty-hint { text-align: center; color: var(--text-3); font-size: 13px; padding: 14px; }
+
+/* 居家事项块 / 迷你添加按钮 */
+.home-thing-block { background: var(--surface); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-card); margin-bottom: 14px; }
+.home-thing-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+.home-thing-head .mini-add { font-weight: 500; }
+.mini-add {
+  border: none; background: rgba(110,184,255,.12); color: var(--work-deep);
+  padding: 5px 12px; border-radius: 999px; font-size: 12px; cursor: pointer;
+}
+.mini-add:hover { background: rgba(110,184,255,.22); }
+.group-life .mini-add { background: rgba(255,154,174,.15); color: var(--life-deep); }
+.group-life .mini-add:hover { background: rgba(255,154,174,.25); }
+
+/* 心愿清单 */
+.wish-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+.wish-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(230,235,245,.5); font-size: 14px; }
+.wish-row:last-child { border-bottom: none; }
+.wish-row .wish-name { flex: 1; }
+.wish-row .wish-status { font-size: 11px; padding: 2px 8px; border-radius: 8px; background: rgba(220,230,245,.4); color: var(--text-2); }
+.wish-row .wish-status.done { background: rgba(74,222,128,.20); color: #16a34a; }
+
+/* 周期日历 */
+.yz-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.yz-cell { aspect-ratio: 1 / 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-2); }
+.yz-cell span { opacity: .85; }
+
+/* 首页应用内提醒横幅（方案②） */
+.notice-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,213,107,.18); border: 1px solid rgba(255,213,107,.5);
+  border-radius: var(--radius-lg); padding: 12px 16px; margin-bottom: 12px; box-shadow: var(--shadow-card);
+}
+.notice-banner .notice-icon { font-size: 22px; }
+.notice-banner .notice-text { font-size: 13px; color: var(--text); }
+.notice-event { background: rgba(255,154,174,.15); border-color: rgba(255,154,174,.5); }
+.notice-period { background: rgba(255,154,174,.12); border-color: rgba(255,154,174,.45); }
+
+/* 设置弹窗：备份区 */
+.backup-block { background: var(--surface); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-card); margin-top: 14px; }
+.backup-subtitle { font-size: 12px; color: var(--text-3); margin-bottom: 8px; }
+.backup-ops { display: flex; gap: 10px; flex-wrap: wrap; }
+.backup-ops .btn-primary, .backup-ops .btn-secondary { padding: 8px 14px; }
+.short-input {
+  width: 100%; min-height: 70px; margin-top: 8px; resize: vertical;
+  padding: 10px 12px; border: 1px solid rgba(220,230,245,.8); border-radius: 12px;
+  background: var(--surface-2); font-size: 12px; font-family: monospace; color: var(--text);
+}
+.short-msg { font-size: 12px; color: var(--text-2); margin-top: 8px; }
+
