@@ -127,7 +127,7 @@ body {
 /* 顶部栏固定占自身高度，下方 layout 填满剩余空间；侧边栏与内容各自独立滚动，
    侧边栏天然从状态栏正下方开始，永不遮挡「首页」（不再依赖 --topbar-h 测量）。
    注意：#layout 不能加 z-index，否则移动抽屉的 z-index 会被困在 layout 内部，浮不到顶层。 */
-#layout { display: flex; flex: 1 1 auto; min-height: 0; position: relative; z-index: 1; }
+#layout { display: flex; flex: 1 1 auto; min-height: 0; }
 #sidebar {
   width: 210px;
   background: var(--sidebar-bg);
@@ -380,4 +380,9 @@ body {
 @media (min-width: 821px) and (max-height: 700px) {
   .nav-item { padding: 7px 10px; font-size: 13px; }
   .nav-icon { font-size: 16px; }
+}
+
+/* 桌面端：抽屉遮罩层不应存在，避免在折叠屏展开状态下误拦截点击 */
+@media (min-width: 821px) {
+  #backdrop, #backdrop.show { display: none !important; }
 }

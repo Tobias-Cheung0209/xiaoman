@@ -1,5 +1,5 @@
 /* 极简离线缓存：缓存应用外壳，导航走网络优先、失败回退缓存 */
-const CACHE = 'wb-shell-v11';
+const CACHE = 'wb-shell-v12';
 const FILES = [
   'index.html', 'css/style.css?v=11', 'css/app-v2.css?v=11', 'js/config.js?v=11', 'js/store.js?v=11',
   'js/topbar.js?v=11', 'js/app.js?v=11', 'manifest.webmanifest',
