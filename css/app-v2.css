@@ -1109,4 +1109,5 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
   background: var(--surface-2); font-size: 12px; font-family: monospace; color: var(--text);
 }
 .short-msg { font-size: 12px; color: var(--text-2); margin-top: 8px; }
+.backup-ops button:disabled { opacity: .45; cursor: not-allowed; }
 

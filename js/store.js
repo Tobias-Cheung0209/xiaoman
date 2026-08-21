@@ -145,62 +145,46 @@ const Store = (function () {
       const compressed = await deflateBytes(bytes);
       return 'XMS1:' + bytesToBase64(compressed);
     },
-    /* 解析 XMS1 短码，返回 JSON 字符串（供 mergeAll 消费） */
+    /* 解析 XMS1 短码，返回 JSON 字符串（供 mergeAll 消费）
+     * 修复①：去除全部空白（IM 粘贴常混入中间换行/空格）
+     * 修复②：前缀大小写不敏感（xms1: / XMS1: 均可） */
     async decodeShort(str) {
-      let s = (str || '').trim();
-      if (s.startsWith('XMS1:')) s = s.slice(5);
+      let s = (str || '').replace(/\s+/g, '').trim();
+      if (/^xms1:/i.test(s)) s = s.slice(5);
       const bytes = base64ToBytes(s);
       const json = await inflateBytes(bytes);
       return json;
     },
+    /* 当前浏览器是否支持 XMS1 短码（CompressionStream/DecompressionStream，iOS 16.4+） */
+    shortSupported() {
+      return typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+    },
   };
 
-  /* ---- 压缩 / 编码辅助（基于原生 CompressionStream，无依赖） ---- */
-  function deflateBytes(bytes) {
-    if (typeof CompressionStream === 'undefined') return Promise.reject(new Error('no-compression'));
-    return new Promise((resolve, reject) => {
-      try {
-        const cs = new CompressionStream('deflate-raw');
-        const writer = cs.writable.getWriter();
-        writer.write(bytes);
-        writer.close();
-        const reader = cs.readable.getReader();
-        const chunks = [];
-        const pump = () => reader.read().then(({ done, value }) => {
-          if (done) { resolve(concatBytes(chunks)); return; }
-          chunks.push(value); pump();
-        }).catch(reject);
-        pump();
-      } catch (e) { reject(e); }
-    });
+  /* ---- 压缩 / 编码辅助（基于原生 CompressionStream，无依赖） ----
+   * 注意：不要手动 writer/reader 配对——writer.close() 在部分实现（Node/WebKit）
+   * 中会等 readable 消费完才 resolve，先 await close 再读 reader 会背压死锁。
+   * 统一用 pipeThrough + Response.arrayBuffer()，由引擎处理背压与关闭。
+   * 错误分类：no-compression / deflate-fail / inflate-fail / bad-base64 */
+  async function deflateBytes(bytes) {
+    if (typeof CompressionStream === 'undefined') throw new Error('no-compression');
+    try {
+      const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      const buf = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buf);
+    } catch (e) {
+      throw new Error('deflate-fail');
+    }
   }
-  function inflateBytes(bytes) {
-    if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('no-compression'));
-    return new Promise((resolve, reject) => {
-      try {
-        const ds = new DecompressionStream('deflate-raw');
-        const writer = ds.writable.getWriter();
-        writer.write(bytes);
-        writer.close();
-        const reader = ds.readable.getReader();
-        const chunks = [];
-        const pump = () => reader.read().then(({ done, value }) => {
-          if (done) {
-            const buf = concatBytes(chunks);
-            resolve(new TextDecoder().decode(buf));
-            return;
-          }
-          chunks.push(value); pump();
-        }).catch(reject);
-        pump();
-      } catch (e) { reject(e); }
-    });
-  }
-  function concatBytes(chunks) {
-    let len = 0; chunks.forEach(c => len += c.length);
-    const out = new Uint8Array(len); let off = 0;
-    chunks.forEach(c => { out.set(c, off); off += c.length; });
-    return out;
+  async function inflateBytes(bytes) {
+    if (typeof DecompressionStream === 'undefined') throw new Error('no-compression');
+    try {
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      const buf = await new Response(stream).arrayBuffer();
+      return new TextDecoder().decode(new Uint8Array(buf));
+    } catch (e) {
+      throw new Error('inflate-fail');
+    }
   }
   function bytesToBase64(bytes) {
     let bin = '';
@@ -211,7 +195,8 @@ const Store = (function () {
     return btoa(bin);
   }
   function base64ToBytes(b64) {
-    const bin = atob(b64);
+    let bin;
+    try { bin = atob(b64); } catch (e) { throw new Error('bad-base64'); }
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return bytes;

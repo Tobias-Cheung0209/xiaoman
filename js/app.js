@@ -1510,6 +1510,15 @@ const App = (function () {
     document.getElementById('btn-import').onchange = importBackup;
     document.getElementById('btn-export-short').onclick = exportShort;
     document.getElementById('btn-import-short').onclick = importShort;
+    /* 能力检测：iOS Safari 16.4 以下无 CompressionStream/DecompressionStream，直接禁用短码 */
+    if (!Store.shortSupported()) {
+      const es = document.getElementById('btn-export-short');
+      const im = document.getElementById('btn-import-short');
+      if (es) { es.disabled = true; es.textContent = '短码不可用（浏览器过旧）'; }
+      if (im) { im.disabled = true; im.textContent = '短码不可用（浏览器过旧）'; }
+      const m = document.getElementById('short-msg');
+      if (m) m.textContent = '⚠️ 当前浏览器/系统不支持 XMS1 短码，请使用上方 JSON 文件备份';
+    }
     document.getElementById('settings-cancel').onclick = closeModal;
     document.getElementById('settings-confirm').onclick = () => {
       Store.setSetting('nickname', document.getElementById('set-name').value);
@@ -1537,6 +1546,10 @@ const App = (function () {
   }
   async function exportShort() {
     const msg = document.getElementById('short-msg');
+    if (!Store.shortSupported()) {
+      if (msg) msg.textContent = '⚠️ 当前浏览器/系统不支持 XMS1 短码，请改用 JSON 文件备份';
+      return;
+    }
     try {
       const code = await Store.encodeShort();
       const ta = document.createElement('textarea');
@@ -1549,20 +1562,25 @@ const App = (function () {
       const si = document.getElementById('short-input');
       if (si) si.value = code;
     } catch (err) {
-      if (msg) msg.textContent = '⚠️ 当前浏览器不支持压缩，请改用 JSON 文件备份';
+      if (msg) msg.textContent = '⚠️ 短码生成失败（' + (err.message === 'deflate-fail' ? '压缩数据出错' : err.message) + '），请改用 JSON 文件备份';
     }
   }
   async function importShort() {
     const si = document.getElementById('short-input');
     const msg = document.getElementById('short-msg');
-    const code = si ? si.value.trim() : '';
-    if (!code) { if (msg) msg.textContent = '请先粘贴 XMS1 短码'; return; }
+    const code = si ? si.value : '';
+    if (!code.trim()) { if (msg) msg.textContent = '请先粘贴 XMS1 短码'; return; }
     try {
       const json = await Store.decodeShort(code);
       if (Store.mergeAll(json)) { alert('合并导入成功！'); closeModal(); selectModule(state.module); }
       else if (msg) msg.textContent = '导入失败：短码内容为空或格式不正确';
     } catch (err) {
-      if (msg) msg.textContent = '⚠️ 短码解析失败（可能损坏或不完整）';
+      if (msg) {
+        if (err.message === 'no-compression') msg.textContent = '⚠️ 当前浏览器/系统不支持 XMS1 短码，请改用 JSON 文件备份';
+        else if (err.message === 'bad-base64') msg.textContent = '⚠️ 短码包含非法字符或被截断，请确认完整复制后再导入';
+        else if (err.message === 'inflate-fail') msg.textContent = '⚠️ 短码已损坏或不完整（解压失败），请重新导出后再导入';
+        else msg.textContent = '⚠️ 短码解析失败：' + (err.message || err);
+      }
     }
   }
 
