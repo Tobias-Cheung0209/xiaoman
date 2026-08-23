@@ -423,6 +423,7 @@ const App = (function () {
     };
     // 特殊模块的内置绑定
     if (modId === 'life' && tab.id === 'homeThings') bindHomeThings(tab);
+    else if (modId === 'life' && tab.id === 'items') bindShopping(tab);
     else if (modId === 'life' && tab.id === 'people') bindPeople(tab);
     else if (modId === 'toolbox' && tab.id === 'youzi') bindYouzi(tab);
     else if (modId === 'discipline' && tab.id === 'plans') bindPlans(tab);
@@ -487,37 +488,30 @@ const App = (function () {
     const cancelled = items.filter(r => r.status === '已取消').length;
     const spent = items.filter(r => r.status === '已买').reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseFloat(it.qty) || 1), 0);
     const target = Store.getSetting('budgetTarget', 0);
-    const pct = target > 0 ? Math.min(100, (spent / target) * 100) : 0;
-    const completePct = total ? Math.round((bought / total) * 100) : 0;
-    const cats = {};
-    items.forEach(it => { const c = it.cat || '其他'; (cats[c] = cats[c] || []).push(it); });
-    let groups = '';
-    Object.entries(cats).forEach(([cat, list]) => {
-      const catColor = (typeof SHOP_CAT_COLORS !== 'undefined' && SHOP_CAT_COLORS[cat]) || '#B8C2D0';
-      groups += `<div class="shop-group">
-        <div class="shop-group-head"><span class="cat-dot" style="background:${catColor}"></span>${esc(cat)} <span style="margin-left:auto;color:var(--text-3);font-size:12px;font-weight:500;">${list.filter(r => r.status === '已买').length}/${list.length}</span></div>
-        ${list.map(it => `
-          <div class="shop-item">
-            <input type="checkbox" data-toggle="${it._id}" data-key="status" data-on="已买" data-off="未买" ${it.status === '已买' ? 'checked' : ''}>
-            <span class="shop-item-name" style="${it.status === '已买' ? 'text-decoration:line-through;opacity:.55;' : ''}${it.status === '已取消' ? 'opacity:.4;' : ''}">${esc(it.name)}</span>
-            ${it.price ? `<span class="shop-item-price">€${parseFloat(it.price).toFixed(0)}</span>` : ''}
-            <button class="shop-item-del" data-edit="${it._id}">✎</button>
-            <button class="shop-item-del" data-del="${it._id}">×</button>
-          </div>`).join('')}
-      </div>`;
-    });
-    const empty = !items.length ? `<div class="empty-state"><div class="empty-state-icon">🛒</div><div class="empty-state-text">还没有购物记录，点击右上角 + 添加</div></div>` : '';
-    return `
-      <div class="shop-progress">
-        <div class="shop-progress-row">
-          <div><div class="shop-progress-big">${completePct}%<small>完成进度</small></div></div>
-          <div><div class="shop-progress-big">€${spent.toFixed(0)}<small>已花 / 预算 €${target || 0}</small></div></div>
-        </div>
-        <div class="shop-budget-bar"><div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
-        <div class="shop-budget-info"><span>已买 ${bought}/${total} · 取消 ${cancelled}</span><span>${target > 0 ? '剩余 €' + (target - spent).toFixed(0) : '未设预算'}</span></div></div>
-      </div>
-      ${empty}
-      ${groups}`;
+    const pending = items.filter(r => (r.status || '未买') === '未买');
+    const done = items.filter(r => r.status === '已买');
+    const cancelledItems = items.filter(r => r.status === '已取消');
+    const row = it => `<div class="shop-simple-row ${it.status === '已买' ? 'done' : ''} ${it.status === '已取消' ? 'cancelled' : ''}">
+      <input type="checkbox" aria-label="${esc(it.name)}" data-toggle="${it._id}" data-key="status" data-on="已买" data-off="未买" ${it.status === '已买' ? 'checked' : ''}>
+      <button type="button" class="shop-simple-main" data-edit="${it._id}"><b>${esc(it.name)}</b>${it.qty && Number(it.qty)!==1 ? `<small>×${esc(it.qty)}</small>`:''}${it.price ? `<small>€${parseFloat(it.price).toFixed(2)}</small>`:''}</button>
+      <button type="button" class="shop-simple-more" data-edit="${it._id}" aria-label="编辑 ${esc(it.name)}">···</button>
+      <button type="button" class="shop-simple-delete" data-del="${it._id}" aria-label="删除 ${esc(it.name)}">×</button>
+    </div>`;
+    return `<div class="shop-simple">
+      <form id="shop-quick-form" class="shop-simple-add"><span>＋</span><input id="shop-quick-input" autocomplete="off" placeholder="添加物品，回车保存" aria-label="添加购物物品"><button type="submit">添加</button></form>
+      <div class="shop-simple-meta"><span>${pending.length} 项待买</span><span>已买 ${bought}/${total}${cancelled ? ` · 取消 ${cancelled}`:''}</span><span>已花 €${spent.toFixed(2)}${target ? ` / €${target}`:''}</span></div>
+      <section class="shop-simple-list">${pending.length ? pending.map(row).join('') : '<div class="shop-simple-empty">没有待买物品，想起什么就记下来吧</div>'}</section>
+      ${done.length ? `<details class="shop-simple-completed"><summary>已完成（${done.length}）</summary>${done.map(row).join('')}</details>`:''}
+      ${cancelledItems.length ? `<details class="shop-simple-completed"><summary>已取消（${cancelledItems.length}）</summary>${cancelledItems.map(row).join('')}</details>`:''}
+      <p class="shop-simple-hint">点击物品可补充或修改分类、价格、数量、链接等完整信息。</p>
+    </div>`;
+  }
+
+  function bindShopping(tab) {
+    const form=document.getElementById('shop-quick-form'), input=document.getElementById('shop-quick-input');
+    if(!form||!input)return;
+    const saveQuick=e=>{if(e)e.preventDefault();const name=input.value.trim();if(!name)return;Store.addRecord(tab,{name,cat:'其他',price:'',buyLink:'',priority:'想要',status:'未买',qty:1,note:''});input.value='';renderContent();};
+    form.onsubmit=saveQuick;input.onkeydown=e=>{if(e.key==='Enter')saveQuick(e);};
   }
 
   /* ============================================================
@@ -571,6 +565,15 @@ const App = (function () {
       </div>`;
     }).join('');
     return items;
+  }
+  function upcomingImportantEvents(limit) {
+    const today=new Date();today.setHours(0,0,0,0);
+    return Store.getList({collection:'events'}).map(r=>{const next=computeNextEvent(r,today);return next?{r,next,days:Math.round((next-today)/86400000)}:null;}).filter(Boolean).sort((a,b)=>a.days-b.days).slice(0,limit||3);
+  }
+  function renderHomeImportantEvents() {
+    const list=upcomingImportantEvents(3);
+    if(!list.length)return '';
+    return `<div class="section-title home-event-title">💝 重要日子 <button data-goto="life" data-tab-target="events">查看全部</button></div><button class="home-event-card" data-goto="life" data-tab-target="events">${list.map(({r,next,days})=>`<span class="home-event-row"><i>${esc(r.type||'重要日期')}</i><b>${days===0?`${esc(r.name)}就是今天`:`距离${esc(r.name)}还有${days}天`}</b><small>（${next.getMonth()+1}月${next.getDate()}日）</small></span>`).join('')}</button>`;
   }
 
   /* ============================================================
@@ -855,30 +858,43 @@ const App = (function () {
     const a = new Date(r.date + 'T00:00:00'), b = new Date(key + 'T00:00:00'), days = Math.round((b - a) / 86400000);
     return r.repeat === '每天' || (r.repeat === '每周' && days % 7 === 0) || (r.repeat === '每月' && a.getDate() === b.getDate());
   }
+  let planMonthCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let selectedPlanDate = todayKey();
+  function planAgendaRow(r, virtualDate) {
+    const done=r.status==='完成', meta=[r.time||'全天',r.domain||'生活',r.priority||'中'];
+    if(r.repeat&&r.repeat!=='不重复')meta.push(r.repeat);
+    return `<div class="plan-agenda-row ${done?'done':''}"><input type="checkbox" data-toggle="${r._id}" data-key="status" data-on="完成" data-off="计划" ${done?'checked':''}><button type="button" class="plan-agenda-main" data-edit="${r._id}"><b>${esc(r.title)}</b><small>${meta.map(esc).join(' · ')}</small></button><button class="shop-item-del" data-edit="${r._id}">✎</button><button class="shop-item-del" data-del="${r._id}">×</button></div>`;
+  }
   function renderPlans(tab) {
-    const plans = Store.getList(tab), total = plans.length, done = plans.filter(r => r.status === '完成').length, tk = todayKey();
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-work"><div class="stat-value">${total}</div><div class="stat-label">待办总数</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${done}</div><div class="stat-label">已完成</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${Math.round((total ? done / total : 0) * 100)}%</div><div class="stat-label">完成率</div></div>
-    </div>` + previewHeat(plans, 'date', '近期待办与日程');
-    const month = new Date(), y = month.getFullYear(), m = month.getMonth(), dim = new Date(y, m + 1, 0).getDate(); let cells = '';
-    for (let d = 1; d <= dim; d++) { const k = `${y}-${String(m + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, has = plans.some(r => planOccurs(r, k)); cells += `<button class="plan-day ${k === tk ? 'today' : ''} ${has ? 'has' : ''}" data-plan-date="${k}">${d}</button>`; }
-    const items = plans.map(r => `<div class="todo-item" data-plan-row data-date="${esc(r.date || '')}">
-      <input type="checkbox" class="todo-check" data-toggle="${r._id}" data-key="status" data-on="完成" data-off="计划" ${r.status === '完成' ? 'checked' : ''}>
-      <div class="todo-main">
-        <div class="todo-title" style="${r.status === '完成' ? 'text-decoration:line-through;opacity:.55;' : ''}">${esc(r.title)}</div>
-        <div class="todo-meta">${esc(r.domain || '')} ${r.date ? '· ' + r.date : '· 待办'} ${r.time ? '· ' + esc(r.time) : ''} ${r.repeat && r.repeat !== '不重复' ? '· ' + r.repeat : ''} · ${esc(r.priority || '中')}</div>
-      </div>
-      <button class="shop-item-del" data-edit="${r._id}">✎</button>
-      <button class="shop-item-del" data-del="${r._id}">×</button>
-    </div>`).join('');
-    return stats + `<div class="plan-quick" id="quick-add-bar"><input type="text" id="quick-add-input" placeholder="输入计划，回车即存"><input type="date" id="quick-add-date"><button id="special-add">详细</button></div><div class="plan-month">${cells}</div><div class="todo-list">${items || '<div class="empty-hint">还没有计划</div>'}</div>`;
+    const plans=Store.getList(tab),total=plans.length,done=plans.filter(r=>r.status==='完成').length,tk=todayKey();
+    const y=planMonthCursor.getFullYear(),m=planMonthCursor.getMonth(),first=new Date(y,m,1),offset=(first.getDay()+6)%7,gridStart=new Date(y,m,1-offset);
+    const monthPlans=plans.filter(r=>r.date&&r.date.startsWith(`${y}-${String(m+1).padStart(2,'0')}`));
+    let cells='';
+    for(let i=0;i<42;i++){
+      const d=new Date(gridStart);d.setDate(gridStart.getDate()+i);const key=dateKey(d),inMonth=d.getMonth()===m,events=plans.filter(r=>planOccurs(r,key)).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
+      const chips=events.slice(0,2).map(r=>`<span class="plan-chip domain-${esc(r.domain||'其他')} priority-${esc(r.priority||'中')} ${r.status==='完成'?'done':''}">${r.time?`<i>${esc(r.time)}</i> `:''}${esc(r.title)}</span>`).join('');
+      cells+=`<button type="button" class="plan-calendar-day ${inMonth?'':'outside'} ${key===tk?'today':''} ${key===selectedPlanDate?'selected':''}" data-plan-date="${key}"><b>${d.getDate()}</b><span class="plan-day-events">${chips}${events.length>2?`<em>+${events.length-2}</em>`:''}</span></button>`;
+    }
+    const agenda=plans.filter(r=>planOccurs(r,selectedPlanDate)).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
+    const unscheduled=plans.filter(r=>!r.date&&r.status!=='完成');
+    const selected=new Date(selectedPlanDate+'T00:00:00'),week='日一二三四五六'[selected.getDay()];
+    return `<div class="plan-summary">本月 ${monthPlans.length} 项 · 共 ${total} 项 · 已完成 ${done} 项 · ${total?Math.round(done/total*100):0}%</div>
+      <form class="plan-quick" id="plan-quick-form"><span>＋</span><input type="text" id="quick-add-input" placeholder="添加计划，回车保存" autocomplete="off"><input type="date" id="quick-add-date" value="${selectedPlanDate}"><button type="button" id="special-add">详细</button></form>
+      <div class="plan-layout"><section class="plan-calendar-card"><header><button type="button" data-plan-prev aria-label="上个月">‹</button><h3>${y} 年 ${m+1} 月</h3><button type="button" data-plan-next aria-label="下个月">›</button><button type="button" class="plan-today-btn" data-plan-today>今天</button></header><div class="plan-weekdays">${'一二三四五六日'.split('').map(x=>`<span>${x}</span>`).join('')}</div><div class="plan-calendar-grid">${cells}</div></section>
+      <aside class="plan-side"><section class="plan-agenda"><header><h3>${selected.getMonth()+1} 月 ${selected.getDate()} 日 · 周${week}</h3><button type="button" id="plan-day-add">＋</button></header>${agenda.length?agenda.map(r=>planAgendaRow(r,selectedPlanDate)).join(''):'<div class="empty-hint">当天没有计划</div>'}</section>
+      <section class="plan-unscheduled"><h3>未排期待办 <small>${unscheduled.length}</small></h3>${unscheduled.length?unscheduled.map(r=>planAgendaRow(r,'')).join(''):'<div class="empty-hint">没有未排期待办</div>'}</section></aside></div>`;
   }
   function bindPlans(tab) {
-    const bar = document.getElementById('quick-add-bar'), input = document.getElementById('quick-add-input');
-    if (bar && input) bar.onkeydown = e => { if (e.key === 'Enter' && input.value.trim()) { e.preventDefault(); Store.addRecord(tab, { title: input.value.trim(), date: document.getElementById('quick-add-date').value, priority:'中', domain:'生活', repeat:'不重复', status:'计划' }); renderContent(); } };
-    document.querySelectorAll('[data-plan-date]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-plan-row]').forEach(r => { r.hidden = !!r.dataset.date && !planOccurs({ date:r.dataset.date, repeat:'不重复' }, b.dataset.planDate); }); });
+    const form=document.getElementById('plan-quick-form'),input=document.getElementById('quick-add-input');
+    const saveQuick=e=>{if(e)e.preventDefault();const title=input?.value.trim();if(!title)return;Store.addRecord(tab,{title,date:document.getElementById('quick-add-date').value,time:'',priority:'中',domain:'生活',repeat:'不重复',status:'计划',note:''});renderContent();};
+    if(form&&input){form.onsubmit=saveQuick;input.onkeydown=e=>{if(e.key==='Enter')saveQuick(e);};}
+    document.querySelectorAll('[data-plan-date]').forEach(b=>b.onclick=()=>{selectedPlanDate=b.dataset.planDate;renderContent();});
+    document.querySelector('[data-plan-prev]')?.addEventListener('click',()=>{planMonthCursor=new Date(planMonthCursor.getFullYear(),planMonthCursor.getMonth()-1,1);selectedPlanDate=dateKey(planMonthCursor);renderContent();});
+    document.querySelector('[data-plan-next]')?.addEventListener('click',()=>{planMonthCursor=new Date(planMonthCursor.getFullYear(),planMonthCursor.getMonth()+1,1);selectedPlanDate=dateKey(planMonthCursor);renderContent();});
+    document.querySelector('[data-plan-today]')?.addEventListener('click',()=>{const n=new Date();planMonthCursor=new Date(n.getFullYear(),n.getMonth(),1);selectedPlanDate=todayKey();renderContent();});
+    const detail=document.getElementById('special-add'),dayAdd=document.getElementById('plan-day-add');
+    if(detail)detail.onclick=()=>openForm(tab,null,{date:document.getElementById('quick-add-date').value});
+    if(dayAdd)dayAdd.onclick=()=>openForm(tab,null,{date:selectedPlanDate});
   }
 
   /* ============================================================
@@ -1417,6 +1433,7 @@ const App = (function () {
         ${renderNoticeBanner()}
         <div class="section-title">📌 今日提醒</div>
         <div class="reminder-card">${reminders}</div>
+        ${renderHomeImportantEvents()}
         <div class="section-title">📦 全部板块</div>
         <div class="module-grid">${tiles}</div>
         <div class="home-actions">
@@ -1429,7 +1446,7 @@ const App = (function () {
 
   function bindHome(root) {
     root.querySelectorAll('[data-goto]').forEach(c =>
-      c.onclick = () => selectModule(c.dataset.goto));
+      c.onclick = () => { selectModule(c.dataset.goto); if(c.dataset.tabTarget)selectTab(c.dataset.tabTarget); });
     const exp = document.getElementById('btn-export-home');
     if (exp) exp.onclick = exportBackup;
     const set = document.getElementById('btn-settings-home');
@@ -1468,11 +1485,7 @@ const App = (function () {
     habitNames.filter(h=>!Store.getList('habitLogs').some(r=>r.habit===h&&r.date===tk)).slice(0,2).forEach(h=>items.push({icon:'🔥',text:h,meta:'今日未打卡'}));
     if(Store.getList('daily').length && !Store.getList('daily').some(r=>r.date===tk)) items.push({icon:'🏃',text:'运动',meta:'今日未记录'});
     if(Store.getList('skincare').length && !Store.getList('skincare').some(r=>r.date===tk)) items.push({icon:'🧴',text:'个人护理',meta:'今日未记录'});
-    const ev = Topbar.getNextEvent();
-    if (ev) {
-      const tail = ev.days === 0 ? '今天' : ev.days === 1 ? '明天' : `还有${ev.days}天`;
-      items.push({ icon: '💝', text: ev.r.name, meta: tail });
-    }
+    upcomingImportantEvents(10).filter(ev=>ev.days<=Math.max(7,parseInt(ev.r.remindDays)||0)).slice(0,3).forEach(ev=>items.push({icon:'💝',text:ev.r.name,meta:ev.days===0?'就是今天':ev.days===1?'明天':`还有${ev.days}天`}));
     if (!items.length) return `<div class="reminder-empty">今天没有待办，享受当下吧～</div>`;
     return `<div class="reminder-list">` + items.map(it =>
       `<div class="reminder-item"><span>${esc(it.icon)}</span><span>${esc(it.text)}</span><small>${esc(it.meta)}</small></div>`

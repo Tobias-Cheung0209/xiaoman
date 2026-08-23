@@ -1138,3 +1138,51 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
   .money-bar-row { grid-template-columns:74px minmax(90px,1fr); gap:8px; }.money-bar-value { grid-column:2; margin-top:-5px; }
   .money-bar-track { height:17px; }.money-trend svg { height:105px; }.money-trend span { font-size:10px; }
 }
+
+/* v24 · 极简购物清单 */
+.shop-simple { max-width:760px; margin:0 auto; }
+.shop-simple-add { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:8px; padding:10px 12px; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow-card); }
+.shop-simple-add span { color:var(--life-deep); font-size:22px; }.shop-simple-add input { border:0; outline:0; background:transparent; min-width:0; font-size:15px; padding:8px 2px; }
+.shop-simple-add button { border:0; border-radius:10px; background:var(--life); color:#fff; padding:8px 13px; cursor:pointer; }
+.shop-simple-meta { display:flex; flex-wrap:wrap; gap:8px 16px; padding:11px 4px; color:var(--text-3); font-size:12px; }
+.shop-simple-list,.shop-simple-completed { background:var(--surface); border-radius:16px; padding:5px 14px; box-shadow:var(--shadow-card); margin-bottom:12px; }
+.shop-simple-row { display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:9px; min-height:52px; border-bottom:1px solid rgba(220,230,245,.65); }
+.shop-simple-row:last-child { border-bottom:0; }.shop-simple-row input { width:22px; height:22px; accent-color:var(--life-deep); cursor:pointer; }
+.shop-simple-main { display:flex; align-items:baseline; flex-wrap:wrap; gap:7px; min-width:0; padding:12px 0; border:0; background:none; text-align:left; cursor:pointer; }
+.shop-simple-main b { overflow:hidden; text-overflow:ellipsis; font-size:15px; font-weight:500; }.shop-simple-main small { color:var(--text-3); font-size:11px; }
+.shop-simple-row.done .shop-simple-main { text-decoration:line-through; opacity:.52; }.shop-simple-row.cancelled { opacity:.42; }
+.shop-simple-more,.shop-simple-delete { border:0; background:none; color:var(--text-3); cursor:pointer; font-size:17px; padding:8px 3px; }.shop-simple-delete { color:var(--life-deep); }
+.shop-simple-completed summary { padding:12px 0; color:var(--text-2); cursor:pointer; font-size:13px; }.shop-simple-empty { padding:28px 10px; text-align:center; color:var(--text-3); font-size:13px; }
+.shop-simple-hint { margin:10px 4px; color:var(--text-3); font-size:12px; }
+
+/* v24 · 计划月历与当日议程 */
+.plan-summary { color:var(--text-3); font-size:12px; margin:2px 2px 10px; }
+.plan-quick { display:grid; grid-template-columns:auto minmax(130px,1fr) auto auto; align-items:center; gap:8px; margin:0 0 14px; padding:9px 11px; background:var(--surface); border:1px solid var(--line); border-radius:15px; box-shadow:var(--shadow-card); }
+.plan-quick>span { color:var(--work-deep); font-size:21px; }.plan-quick input { min-width:0; border:0; outline:0; background:transparent; padding:7px; }.plan-quick input[type=date] { border-left:1px solid var(--line); }
+.plan-quick button { border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--work-deep); padding:7px 11px; cursor:pointer; }
+.plan-layout { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(280px,.8fr); align-items:start; gap:14px; }
+.plan-calendar-card,.plan-agenda,.plan-unscheduled { background:var(--surface); border-radius:18px; padding:14px; box-shadow:var(--shadow-card); }
+.plan-calendar-card>header,.plan-agenda>header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }.plan-calendar-card h3,.plan-agenda h3,.plan-unscheduled h3 { margin:0; font-size:16px; }
+.plan-calendar-card>header h3 { min-width:130px; text-align:center; }.plan-calendar-card>header button,.plan-agenda>header button { border:0; background:rgba(110,184,255,.1); border-radius:10px; padding:7px 11px; color:var(--work-deep); cursor:pointer; font-size:16px; }
+.plan-calendar-card .plan-today-btn { margin-left:auto; font-size:12px; }.plan-weekdays,.plan-calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+.plan-weekdays span { padding:6px; text-align:center; color:var(--text-3); font-size:11px; }.plan-calendar-grid { border-top:1px solid var(--line); border-left:1px solid var(--line); }
+.plan-calendar-day { min-height:92px; overflow:hidden; padding:6px; border:0; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:rgba(255,255,255,.38); text-align:left; cursor:pointer; }
+.plan-calendar-day>b { display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center; border-radius:50%; font-size:12px; }.plan-calendar-day.outside { opacity:.38; }.plan-calendar-day.selected { background:rgba(110,184,255,.11); }.plan-calendar-day.today>b { background:var(--work); color:#fff; }
+.plan-day-events { display:grid; gap:3px; margin-top:3px; }.plan-chip { display:block; overflow:hidden; border-radius:5px; padding:3px 5px; background:#eaf3ff; color:#2563a9; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }.plan-chip i { font-style:normal; opacity:.72; }.plan-chip.domain-学习 { background:#f0e7ff;color:#7041a3; }.plan-chip.domain-生活,.plan-chip.domain-家务 { background:#ffeaf1;color:#b33c68; }.plan-chip.priority-高 { background:#ffe4e4;color:#c53030; }.plan-chip.done { text-decoration:line-through;opacity:.48; }.plan-day-events em { color:var(--work-deep);font-size:10px;font-style:normal; }
+.plan-side { display:grid; gap:12px; }.plan-agenda>header { justify-content:space-between; }.plan-agenda-row { display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:8px; min-height:54px; border-bottom:1px solid rgba(220,230,245,.7); }.plan-agenda-row:last-child { border-bottom:0; }.plan-agenda-row input { width:20px;height:20px;accent-color:var(--work); }.plan-agenda-main { min-width:0;border:0;background:none;text-align:left;padding:9px 0;cursor:pointer; }.plan-agenda-main b,.plan-agenda-main small { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }.plan-agenda-main b { font-size:13px; }.plan-agenda-main small { margin-top:4px;color:var(--text-3);font-size:10px; }.plan-agenda-row.done .plan-agenda-main { text-decoration:line-through;opacity:.48; }.plan-unscheduled h3 small { color:var(--text-3);font-weight:500; }
+@media(max-width:820px){
+  .plan-layout { grid-template-columns:1fr; }.plan-calendar-day { min-height:70px;padding:4px; }.plan-chip { padding:2px 3px;font-size:9px; }.plan-chip i { display:none; }
+  .plan-quick { grid-template-columns:auto 1fr auto; }.plan-quick input[type=date] { grid-column:2/4;border-left:0;border-top:1px solid var(--line); }
+}
+@media(max-width:480px){
+  .plan-calendar-card { padding:10px 6px; }.plan-calendar-day { min-height:58px; }.plan-calendar-day>b { width:22px;height:22px; }.plan-chip:nth-child(2){display:none}.plan-day-events em{display:block}.plan-calendar-card>header h3{font-size:15px;min-width:110px}.shop-simple-more{display:none}
+}
+
+/* v25 · 首页重要日期倒计时 */
+.home-event-title { margin-top:-5px; }
+.home-event-title button { margin-left:auto; border:0; background:none; color:var(--life-deep); cursor:pointer; font-size:12px; }
+.home-event-card { display:grid; width:100%; margin:0 0 22px; padding:5px 17px; border:1px solid rgba(255,190,205,.48); border-radius:18px; background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,235,242,.78)); box-shadow:var(--shadow-card); text-align:left; cursor:pointer; }
+.home-event-row { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; min-height:52px; border-bottom:1px solid rgba(255,190,205,.28); }
+.home-event-row:last-child { border-bottom:0; }.home-event-row i { border-radius:999px; padding:4px 8px; background:rgba(255,154,174,.16); color:var(--life-deep); font-size:10px; font-style:normal; }
+.home-event-row b { overflow:hidden; color:var(--text); text-overflow:ellipsis; white-space:nowrap; font-size:14px; }.home-event-row small { color:var(--text-3); font-size:12px; white-space:nowrap; }
+@media(max-width:480px){.home-event-row{grid-template-columns:auto 1fr}.home-event-row small{grid-column:2;margin-top:-12px;padding-bottom:8px}}
