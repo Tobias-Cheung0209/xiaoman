@@ -8,7 +8,10 @@
  * tab.special：特例渲染标识（对应 app.js 渲染函数）
  * ============================================================ */
 
-const APP_NAME = '小满';
+const APP_NAME = '小满则盈';
+
+const MONEY_CURRENCIES = ['€', '$', '¥'];
+const MONEY_CATEGORIES = ['工资', '副业', '奖金', '退款', '日常开销', '房租水电', '交通', '餐饮', '购物', '娱乐支出', '旅行', '医疗', '学习', '股票', '理财', '订阅', '税费', '跨境生活', '其他'];
 
 /* 固定座右铭（不再轮换词库） */
 const MOTTO = '日拱一卒无有尽，功不唐捐终入海。';
@@ -87,6 +90,7 @@ const MODULES = [
     id: 'jikui', name: '积跬', icon: '🌱', group: 'work', render: 'tabs',
     desc: '公司事务 · 独立',
     tabs: [
+      { id: 'board', name: '看板', type: 'list', collection: 'todos', special: 'jikuiBoard', fields: [] },
       {
         id: 'todos', name: '公司待办', type: 'list', special: 'jikuiTodos',
         fields: [
@@ -96,6 +100,7 @@ const MODULES = [
           { key: 'status', label: '状态', type: 'select', options: ['待办', '进行', '完成'], def: '待办' },
         ],
       },
+      { id: 'analyze', name: '统计分析', type: 'list', collection: 'todos', special: 'jikuiAnalyze', fields: [] },
       {
         id: 'docs', name: '文档收集', type: 'list',
         fields: [
@@ -264,22 +269,14 @@ const MODULES = [
     desc: '待办 · 日历 · 习惯 · 运动 · 形象',
     tabs: [
       {
-        id: 'lifeTodos', name: '每日待办', type: 'list', collection: 'lifeTodos', special: 'lifeTodos',
-        fields: [
-          { key: 'item', label: '事项', type: 'text', required: true },
-          { key: 'domain', label: '领域', type: 'select', options: ['生活', '家务', '其他'], def: '生活' },
-          { key: 'due', label: '截止日', type: 'date' },
-          { key: 'timeRange', label: '时间段', type: 'text', ph: '如 14:00-15:30 或 全天' },
-          { key: 'priority', label: '优先级', type: 'select', options: ['高', '中', '低'], def: '中' },
-          { key: 'status', label: '状态', type: 'select', options: ['待办', '完成'], def: '待办' },
-        ],
-      },
-      {
-        id: 'calendar', name: '日历计划', type: 'list', collection: 'calendarPlans',
+        id: 'plans', name: '计划', type: 'list', collection: 'plans', special: 'plans',
         fields: [
           { key: 'title', label: '标题', type: 'text', required: true },
           { key: 'date', label: '日期', type: 'date' },
           { key: 'time', label: '时间', type: 'text' },
+          { key: 'priority', label: '优先级', type: 'select', options: ['高', '中', '低'], def: '中' },
+          { key: 'domain', label: '领域', type: 'select', options: ['生活', '家务', '工作', '学习', '其他'], def: '生活' },
+          { key: 'repeat', label: '重复', type: 'select', options: ['不重复', '每天', '每周', '每月'], def: '不重复' },
           { key: 'note', label: '备注', type: 'textarea' },
           { key: 'status', label: '状态', type: 'select', options: ['计划', '进行', '完成'], def: '计划' },
         ],
@@ -287,8 +284,9 @@ const MODULES = [
       {
         id: 'habits', name: '习惯热力', type: 'list', collection: 'habitLogs', special: 'habits',
         fields: [
-          { key: 'habit', label: '习惯', type: 'select', options: ['看书', '早睡早起', '运动打卡', '学习', '其他'], def: '看书' },
+          { key: 'habit', label: '习惯', type: 'selectOther', options: ['看书', '早睡早起', '运动打卡', '学习', '其他'], def: '看书' },
           { key: 'date', label: '日期', type: 'date', required: true },
+          { key: 'weeklyGoal', label: '每周目标次数', type: 'number', def: 3 },
           { key: 'note', label: '备注', type: 'text' },
         ],
       },
@@ -354,6 +352,15 @@ const MODULES = [
           { key: 'source', label: '来源标记', type: 'text' },
         ],
       },
+      {
+        id: 'books', name: '读书', type: 'list', collection: 'bookLogs',
+        fields: [
+          { key: 'book', label: '书名', type: 'text', required: true },
+          { key: 'date', label: '日期', type: 'date', required: true },
+          { key: 'progress', label: '阅读进度', type: 'text', ph: '如 120页 / 60%' },
+          { key: 'note', label: '读书心得', type: 'textarea', ph: '写下一点收获即可' },
+        ],
+      },
     ],
   },
 
@@ -372,6 +379,7 @@ const MODULES = [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'type', label: '类型', type: 'selectOther', options: ['现金', '储蓄', '投资', '其他'], def: '储蓄' },
           { key: 'amount', label: '金额', type: 'number', required: true },
+          { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
           { key: 'note', label: '备注', type: 'text' },
         ],
       },
@@ -379,9 +387,11 @@ const MODULES = [
         id: 'flows', name: '收支流水', type: 'list', collection: 'flows', special: 'moneyFlows',
         fields: [
           { key: 'account', label: '账户', type: 'text' },
-          { key: 'currency', label: '币种', type: 'select', options: ['€', '$', '¥'], def: '€' },
+          { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
           { key: 'direction', label: '方向', type: 'select', options: ['收入', '支出'], def: '支出' },
-          { key: 'category', label: '分类', type: 'select', options: ['工资', '日常开销', '购物', '娱乐支出', '股票', '理财', '订阅', '其他'], def: '日常开销' },
+          { key: 'category', label: '分类', type: 'select', options: MONEY_CATEGORIES, def: '日常开销' },
+          { key: 'categoryDetail', label: '其他明细', type: 'text' },
+          { key: 'budgetStatus', label: '预算状态', type: 'select', options: ['自动匹配', '预算内', '预算外'], def: '自动匹配' },
           { key: 'amount', label: '金额', type: 'number', required: true },
           { key: 'date', label: '日期', type: 'date' },
           { key: 'note', label: '备注', type: 'textarea' },
@@ -390,8 +400,10 @@ const MODULES = [
       {
         id: 'budget', name: '预算', type: 'list', collection: 'moneyBudget',
         fields: [
-          { key: 'cat', label: '分类', type: 'text', required: true },
-          { key: 'monthlyLimit', label: '月度上限', type: 'number', required: true },
+          { key: 'cat', label: '分类', type: 'select', options: ['总预算'].concat(MONEY_CATEGORIES), def: '总预算' },
+          { key: 'limit', label: '预算上限', type: 'number', required: true },
+          { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
+          { key: 'period', label: '周期', type: 'select', options: ['周', '月', '季', '年'], def: '月' },
         ],
       },
       {
@@ -400,6 +412,11 @@ const MODULES = [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'target', label: '目标', type: 'number', required: true },
           { key: 'current', label: '已存', type: 'number', def: 0 },
+          { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
+          { key: 'deadline', label: '目标日期', type: 'date' },
+          { key: 'goalType', label: '目标类型', type: 'selectOther', options: ['应急', '旅行', '购房', '学习', '其他'], def: '应急' },
+          { key: 'priority', label: '优先级', type: 'select', options: ['高', '中', '低'], def: '中' },
+          { key: 'status', label: '状态', type: 'select', options: ['进行中', '暂停', '已完成'], def: '进行中' },
           { key: 'note', label: '备注', type: 'text' },
         ],
       },
@@ -408,11 +425,32 @@ const MODULES = [
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'amount', label: '金额', type: 'number', required: true },
-          { key: 'cycle', label: '周期', type: 'select', options: ['月', '年', '周'], def: '月' },
+          { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
+          { key: 'cycle', label: '周期', type: 'select', options: ['周', '月', '季', '年'], def: '月' },
           { key: 'nextDate', label: '下次日期', type: 'date' },
           { key: 'method', label: '支付方式', type: 'text' },
         ],
       },
+      { id: 'snapshots', name: '资产快照', type: 'list', collection: 'moneySnapshots', fields: [
+        { key: 'date', label: '日期', type: 'date', required: true },
+        { key: 'amount', label: '资产总额', type: 'number', required: true },
+        { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
+        { key: 'note', label: '备注', type: 'text' },
+      ] },
+    ],
+  },
+
+  {
+    id: 'invest', name: '投资', icon: '📈', group: 'work', render: 'tabs', desc: '全球行情 · 投资复盘',
+    tabs: [
+      { id: 'market', name: '全球行情', type: 'list', special: 'investMarket', fields: [] },
+      { id: 'logs', name: '投资日志', type: 'list', collection: 'stockLog', special: 'stockLog', fields: [
+        { key: 'date', label: '日期', type: 'date', required: true },
+        { key: 'type', label: '类型', type: 'select', options: ['复盘', '操作', '想法'], def: '复盘' },
+        { key: 'symbol', label: '关联标的', type: 'text', ph: '如 中芯国际 / 688981.SH / AAPL' },
+        { key: 'content', label: '内容', type: 'textarea', required: true, ph: '记录判断、依据、风险和下一步（不强制模板）' },
+        { key: 'photo', label: '截图', type: 'image' },
+      ] },
     ],
   },
 

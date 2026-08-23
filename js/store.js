@@ -1,204 +1,55 @@
-/* ============================================================
- * 存储引擎：单一 JSON 根对象，localStorage 持久化
- * data = { collections: { key: [records] }, settings: {...} }
- * 导出/导入基于同一根对象
- * V3：getList/CRUD 支持传入 tab 对象，自动取 tab.collection || tab.id
- *     （多 Tab 共享同一集合），向后兼容纯字符串 key。
- * ============================================================ */
-
+/* 小满则盈数据引擎：localStorage 真源、JSON 备份、按时间合并、删除墓碑。 */
 const Store = (function () {
-  const KEY = 'wb_data';
-
-  /* tab 对象 → collection key；纯字符串原样返回 */
-  function keyOf(tabOrId) {
-    if (tabOrId && typeof tabOrId === 'object') return tabOrId.collection || tabOrId.id;
-    return tabOrId;
+  const KEY = 'wb_data', META_KEY = 'xiaoman:meta', SNAP_KEY = 'xiaoman:importSnapshots', SCHEMA_VERSION = 2;
+  const emptyData = () => ({ schemaVersion: SCHEMA_VERSION, collections: {}, settings: {}, settingTimes: {} });
+  const keyOf = x => x && typeof x === 'object' ? (x.collection || x.id) : x;
+  const uuid = () => crypto.randomUUID ? crypto.randomUUID() : 'r' + Date.now() + Math.random().toString(36).slice(2);
+  const parsedIso = v => { const n = Date.parse(v || ''); return Number.isFinite(n) ? new Date(n).toISOString() : ''; };
+  const stamp = r => Date.parse(r.updatedAt || r._updatedAt || r.createdAt || r._created || 0) || 0;
+  function normalizeRecord(rec) {
+    const r = Object.assign({}, rec || {}), created = parsedIso(r.createdAt || r._created) || new Date().toISOString();
+    r._id = r._id || uuid(); r.createdAt = created; r.updatedAt = parsedIso(r.updatedAt || r._updatedAt) || created;
+    r.deletedAt = r.deletedAt ? (parsedIso(r.deletedAt) || r.updatedAt) : null; r.schemaVersion = SCHEMA_VERSION; delete r._updatedAt; return r;
   }
-
-  function load() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (!raw) return { collections: {}, settings: {} };
-      const d = JSON.parse(raw);
-      if (!d.collections) d.collections = {};
-      if (!d.settings) d.settings = {};
-      return d;
-    } catch (e) {
-      console.error('load failed', e);
-      return { collections: {}, settings: {} };
-    }
+  function normalizeData(input) {
+    const d = input && typeof input === 'object' && !Array.isArray(input) ? input : emptyData(), out = emptyData();
+    Object.keys(d.collections || {}).forEach(k => { if (Array.isArray(d.collections[k])) out.collections[k] = d.collections[k].map(normalizeRecord); });
+    out.settings = d.settings && typeof d.settings === 'object' && !Array.isArray(d.settings) ? Object.assign({}, d.settings) : {};
+    out.settingTimes = d.settingTimes && typeof d.settingTimes === 'object' ? Object.assign({}, d.settingTimes) : {}; return out;
   }
-
+  function load() { try { const raw = localStorage.getItem(KEY); return raw ? normalizeData(JSON.parse(raw)) : emptyData(); } catch (e) { console.error('load failed', e); return emptyData(); } }
   let data = load();
-
-  function persist() {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(data));
-      return true;
-    } catch (e) {
-      console.error('persist failed', e);
-      alert('保存失败：本地存储空间可能已满（尤其是照片）。请减少图片或清理数据。');
-      return false;
-    }
+  function persist(next) { try { localStorage.setItem(KEY, JSON.stringify(next)); data = next; return true; } catch (e) { console.error('persist failed', e); alert('保存失败：浏览器本地空间可能已满。请先导出 JSON 备份并减少照片。'); return false; } }
+  function mutate(fn) { const next = normalizeData(JSON.parse(JSON.stringify(data))); fn(next); return persist(next); }
+  const visible = arr => (arr || []).filter(r => !r.deletedAt);
+  function snapshot() { try { const list = JSON.parse(localStorage.getItem(SNAP_KEY) || '[]'); list.unshift({ at: new Date().toISOString(), json: JSON.stringify(data) }); localStorage.setItem(SNAP_KEY, JSON.stringify(list.slice(0, 3))); } catch (e) { console.warn('snapshot failed', e); } }
+  function mergeRecords(local, incoming, stats) {
+    const map = new Map(); (local || []).forEach(r => map.set(r._id, normalizeRecord(r)));
+    (incoming || []).forEach(raw => { const r = normalizeRecord(raw), old = map.get(r._id); if (!old) { map.set(r._id, r); stats.added++; return; }
+      const nt = stamp(r), ot = stamp(old); if (nt > ot) { map.set(r._id, r); stats.updated++; } else if (nt < ot) stats.keptLocal++;
+      else if (JSON.stringify(r) !== JSON.stringify(old)) { const c = normalizeRecord(Object.assign({}, r, { _id: uuid(), conflictOf: r._id, conflictAt: new Date().toISOString() })); map.set(c._id, c); stats.conflicts++; }
+    }); return Array.from(map.values());
   }
-
-  return {
+  const api = {
     keyOf,
-    /* 集合（列表型模块/子表） */
-    getList(tabOrId) {
-      return data.collections[keyOf(tabOrId)] || [];
-    },
-    saveList(tabOrId, arr) {
-      data.collections[keyOf(tabOrId)] = arr;
-      persist();
-    },
-    addRecord(tabOrId, rec) {
-      const k = keyOf(tabOrId);
-      const arr = data.collections[k] || [];
-      rec._id = 'r' + Date.now() + Math.floor(Math.random() * 1000);
-      rec._created = new Date().toISOString();
-      arr.unshift(rec);
-      data.collections[k] = arr;
-      persist();
-      return rec;
-    },
-    updateRecord(tabOrId, id, rec) {
-      const k = keyOf(tabOrId);
-      const arr = data.collections[k] || [];
-      const i = arr.findIndex(r => r._id === id);
-      if (i >= 0) { arr[i] = Object.assign({}, arr[i], rec, { updatedAt: new Date().toISOString() }); data.collections[k] = arr; persist(); }
-    },
-    deleteRecord(tabOrId, id) {
-      const k = keyOf(tabOrId);
-      let arr = data.collections[k] || [];
-      arr = arr.filter(r => r._id !== id);
-      data.collections[k] = arr;
-      persist();
-    },
-
-    /* 设置（单条记录型，如经期设置、昵称等） */
-    getSetting(key, def) {
-      return key in data.settings ? data.settings[key] : def;
-    },
-    setSetting(key, val) {
-      data.settings[key] = val;
-      persist();
-    },
-
-    /* 全部导出 */
-    exportAll() {
-      return JSON.stringify(data, null, 2);
-    },
-    /* 导入（覆盖） */
-    importAll(json) {
-      try {
-        const d = JSON.parse(json);
-        if (!d.collections) d.collections = {};
-        if (!d.settings) d.settings = {};
-        data = d;
-        persist();
-        return true;
-      } catch (e) {
-        console.error(e);
-        return false;
-      }
-    },
-    /* 合并导入（v19-①）：按 _id 去重，取 updatedAt/_created 较新者；无 _id 视为新记录；设置浅合并（导入覆盖本地） */
-    mergeAll(json) {
-      try {
-        const d = JSON.parse(json);
-        if (!d.collections) d.collections = {};
-        if (!d.settings) d.settings = {};
-        Object.keys(d.collections).forEach(k => {
-          const incoming = d.collections[k] || [];
-          const cur = data.collections[k] || [];
-          const map = {};
-          cur.forEach(r => { if (r && r._id) map[r._id] = r; });
-          incoming.forEach(r => {
-            if (r && r._id && map[r._id]) {
-              const tNew = new Date(r.updatedAt || r._created || 0).getTime();
-              const tOld = new Date(map[r._id].updatedAt || map[r._id]._created || 0).getTime();
-              if (tNew >= tOld) map[r._id] = r;
-            } else if (r && r._id) {
-              map[r._id] = r;
-            } else {
-              const nr = Object.assign({}, r);
-              nr._id = 'r' + Date.now() + Math.floor(Math.random() * 100000);
-              nr._created = nr._created || new Date().toISOString();
-              map[nr._id] = nr;
-            }
-          });
-          data.collections[k] = Object.values(map);
-        });
-        data.settings = Object.assign({}, data.settings, d.settings);
-        persist();
-        return true;
-      } catch (e) {
-        console.error(e);
-        return false;
-      }
-    },
-    /* 导出 XMS1 短码：deflate-raw + base64，前缀 XMS1: */
-    async encodeShort() {
-      const json = JSON.stringify(data);
-      const bytes = new TextEncoder().encode(json);
-      const compressed = await deflateBytes(bytes);
-      return 'XMS1:' + bytesToBase64(compressed);
-    },
-    /* 解析 XMS1 短码，返回 JSON 字符串（供 mergeAll 消费）
-     * 修复①：去除全部空白（IM 粘贴常混入中间换行/空格）
-     * 修复②：前缀大小写不敏感（xms1: / XMS1: 均可） */
-    async decodeShort(str) {
-      let s = (str || '').replace(/\s+/g, '').trim();
-      if (/^xms1:/i.test(s)) s = s.slice(5);
-      const bytes = base64ToBytes(s);
-      const json = await inflateBytes(bytes);
-      return json;
-    },
-    /* 当前浏览器是否支持 XMS1 短码（CompressionStream/DecompressionStream，iOS 16.4+） */
-    shortSupported() {
-      return typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
-    },
+    getList(x, opts) { const arr = data.collections[keyOf(x)] || []; return opts && opts.includeDeleted ? arr : visible(arr); },
+    saveList(x, arr) { return mutate(d => { d.collections[keyOf(x)] = (arr || []).map(normalizeRecord); }); },
+    addRecord(x, rec) { const r = normalizeRecord(rec), now = new Date().toISOString(); r.createdAt = now; r.updatedAt = now; return mutate(d => { const k = keyOf(x); d.collections[k] = d.collections[k] || []; d.collections[k].unshift(r); }) ? r : null; },
+    updateRecord(x, id, rec) { return mutate(d => { const k = keyOf(x), arr = d.collections[k] || [], i = arr.findIndex(r => r._id === id); if (i >= 0) arr[i] = normalizeRecord(Object.assign({}, arr[i], rec, { updatedAt: new Date().toISOString(), deletedAt: null })); }); },
+    deleteRecord(x, id) { return mutate(d => { const k = keyOf(x), r = (d.collections[k] || []).find(v => v._id === id); if (r) { r.deletedAt = new Date().toISOString(); r.updatedAt = r.deletedAt; } }); },
+    getSetting(k, def) { return Object.prototype.hasOwnProperty.call(data.settings, k) ? data.settings[k] : def; },
+    setSetting(k, val) { return mutate(d => { d.settings[k] = val; d.settingTimes[k] = new Date().toISOString(); }); },
+    getMeta(k, def) { try { const m = JSON.parse(localStorage.getItem(META_KEY) || '{}'); return Object.prototype.hasOwnProperty.call(m, k) ? m[k] : def; } catch (_) { return def; } },
+    setMeta(k, val) { try { const m = JSON.parse(localStorage.getItem(META_KEY) || '{}'); m[k] = val; localStorage.setItem(META_KEY, JSON.stringify(m)); return true; } catch (_) { return false; } },
+    exportAll() { return JSON.stringify(data, null, 2); },
+    importAll(json) { try { const next = normalizeData(JSON.parse(json)); snapshot(); return persist(next); } catch (e) { console.error(e); return false; } },
+    mergeAll(json) { try { const incoming = normalizeData(JSON.parse(json)), next = normalizeData(data), stats = { added: 0, updated: 0, keptLocal: 0, conflicts: 0, settings: 0 };
+        Object.keys(incoming.collections).forEach(k => { next.collections[k] = mergeRecords(next.collections[k] || [], incoming.collections[k], stats); });
+        Object.keys(incoming.settings).forEach(k => { const nt = Date.parse(incoming.settingTimes[k] || 0) || 0, ot = Date.parse(next.settingTimes[k] || 0) || 0; if (!Object.prototype.hasOwnProperty.call(next.settings, k) || nt > ot) { next.settings[k] = incoming.settings[k]; next.settingTimes[k] = incoming.settingTimes[k] || new Date().toISOString(); stats.settings++; } });
+        snapshot(); if (!persist(next)) return false; api.lastMergeStats = stats; return true; } catch (e) { console.error(e); return false; } },
+    migrateOnce(k, fn) { if (api.getMeta(k, false)) return false; const ok = mutate(fn); if (ok) api.setMeta(k, true); return ok; },
+    backupSize() { return new Blob([JSON.stringify(data)]).size; },
+    lastMergeStats: null,
   };
-
-  /* ---- 压缩 / 编码辅助（基于原生 CompressionStream，无依赖） ----
-   * 注意：不要手动 writer/reader 配对——writer.close() 在部分实现（Node/WebKit）
-   * 中会等 readable 消费完才 resolve，先 await close 再读 reader 会背压死锁。
-   * 统一用 pipeThrough + Response.arrayBuffer()，由引擎处理背压与关闭。
-   * 错误分类：no-compression / deflate-fail / inflate-fail / bad-base64 */
-  async function deflateBytes(bytes) {
-    if (typeof CompressionStream === 'undefined') throw new Error('no-compression');
-    try {
-      const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-      const buf = await new Response(stream).arrayBuffer();
-      return new Uint8Array(buf);
-    } catch (e) {
-      throw new Error('deflate-fail');
-    }
-  }
-  async function inflateBytes(bytes) {
-    if (typeof DecompressionStream === 'undefined') throw new Error('no-compression');
-    try {
-      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-      const buf = await new Response(stream).arrayBuffer();
-      return new TextDecoder().decode(new Uint8Array(buf));
-    } catch (e) {
-      throw new Error('inflate-fail');
-    }
-  }
-  function bytesToBase64(bytes) {
-    let bin = '';
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-    }
-    return btoa(bin);
-  }
-  function base64ToBytes(b64) {
-    let bin;
-    try { bin = atob(b64); } catch (e) { throw new Error('bad-base64'); }
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes;
-  }
+  return api;
 })();

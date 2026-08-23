@@ -220,18 +220,15 @@ const Xiaoman = (function () {
   function runAction(act) {
     switch (act) {
       case 'add': {
-        // 选具体功能：填表——让小满睡
-        const mod = (typeof MODULE_MAP !== 'undefined') ? MODULE_MAP['discipline'] : null;
-        const tab = mod ? mod.tabs.find(t => t.id === 'lifeTodos') : null;
         close();
-        if (tab) App.openForm(tab, null, { domain: '生活', status: '待办', priority: '中' });
+        App.openQuickAdd();
         break;
       }
       case 'say':
         // 说点啥：收起菜单，气泡独占，小满保持醒着
         hidePanel();
         collapseMenu();
-        say(randomLine());
+        say((App.getReminderSummary && App.getReminderSummary()) || randomLine());
         break;
       case 'modules':
         // 全部模块：弹窗，小满保持醒着
@@ -337,6 +334,7 @@ const Xiaoman = (function () {
     search.addEventListener('keydown', e => {
       if (e.key === 'Escape') hidePanel();
     });
+    try { if (!sessionStorage.getItem('xiaoman:nudge') && App.getReminderSummary && App.getReminderSummary()) { sessionStorage.setItem('xiaoman:nudge','1'); setTimeout(()=>{ open(); setTimeout(()=>{ collapseMenu(); say('提醒你：'+App.getReminderSummary().slice(0,90)); },1050); },1800); } } catch(_) {}
   }
 
   return { init };
