@@ -211,6 +211,8 @@ const MODULES = [
         id: 'destinations', name: '目的地', type: 'list', collection: 'destinations', special: 'travelDest',
         fields: [
           { key: 'city', label: '城市/国家', type: 'text', required: true },
+          { key: 'longitude', label: '经度（可选，无法识别时填写）', type: 'number', ph: '范围 -180 至 180' },
+          { key: 'latitude', label: '纬度（可选）', type: 'number', ph: '范围 -90 至 90' },
           { key: 'status', label: '状态', type: 'select', options: ['想去', '计划中', '已打卡'], def: '想去' },
           { key: 'spots', label: '必打卡景点', type: 'textarea' },
           { key: 'food', label: '美食', type: 'text' },

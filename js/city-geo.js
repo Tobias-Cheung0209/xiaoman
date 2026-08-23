@@ -1,8 +1,7 @@
 /* ============================================================
  * 城市经纬度坐标表（纯静态，无外部依赖）
  * 供「旅行总览」纯 SVG 地图打点使用：{ 城市名: [经度, 纬度] }
- * 仅收录常用国内省会/首府 + 世界热门旅行城市。
- * 未在表中的城市不会打点（界面会提示），可在目的地表单手动补充。
+ * 常用城市优先精确定位；省级区域与全球国家由 travel-areas.js 补齐。
  * ============================================================ */
 const CITY_GEO = {
   /* ---- 国内省会 / 直辖市 / 首府 ---- */
@@ -94,15 +93,23 @@ const CHINA_TRAVEL_GEO = new Set([
   '北京','天津','上海','重庆','石家庄','太原','呼和浩特','沈阳','长春','哈尔滨','南京','杭州','合肥','福州','南昌','济南','郑州','武汉','长沙','广州','南宁','海口','成都','贵阳','昆明','拉萨','西安','兰州','西宁','银川','乌鲁木齐','香港','澳门','台北','三亚','青岛','大连','厦门','深圳','苏州','丽江','大理','桂林','敦煌','九寨沟','张家界','黄山','泰山','千岛湖','鼓浪屿','西湖'
 ]);
 
-function resolveTravelGeo(rawName) {
+function resolveTravelGeo(rawName, manualLon, manualLat) {
   const original = String(rawName || '').trim();
+  const hasManual = manualLon !== '' && manualLon != null && manualLat !== '' && manualLat != null;
+  const lon = Number(manualLon), lat = Number(manualLat);
+  if (hasManual && Number.isFinite(lon) && Number.isFinite(lat) && lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90) {
+    return {
+      lon, lat, canonical: original || '自定义坐标',
+      scope: lon >= 73 && lon <= 136 && lat >= 3 && lat <= 54 ? 'china' : 'world',
+    };
+  }
   if (!original) return null;
   const normalized = original.toLowerCase().replace(/[\s　]+/g, ' ').trim();
-  const compact = normalized.replace(/(?:市|省|自治区|特别行政区)$/u, '');
+  const compact = normalized.replace(/(?:壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区|省|市)$/u, '');
   const candidates = [original, normalized, compact];
   original.split(/[、,，/／·()（）]/).forEach(part => {
     const value = part.trim();
-    if (value) candidates.push(value, value.toLowerCase());
+    if (value) candidates.push(value, value.toLowerCase(), value.toLowerCase().replace(/(?:壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区|省|市)$/u, ''));
   });
   for (const candidate of candidates) {
     const canonical = TRAVEL_GEO_ALIASES[candidate] || candidate;
@@ -111,6 +118,20 @@ function resolveTravelGeo(rawName) {
       lon: geo[0], lat: geo[1], canonical,
       scope: CHINA_TRAVEL_GEO.has(canonical) ? 'china' : 'world',
     };
+    const area = typeof TRAVEL_AREA_GEO !== 'undefined' ? TRAVEL_AREA_GEO[String(candidate).toLowerCase()] : null;
+    if (area) return { lon: area[0], lat: area[1], scope: area[2], canonical: area[3] };
+  }
+  /* 支持“中国青海省”“德国柏林”等复合填写；长名称优先，避免短名称误命中。 */
+  const searchable = [];
+  Object.keys(CITY_GEO).forEach(key => searchable.push([key.toLowerCase(), CITY_GEO[key], CHINA_TRAVEL_GEO.has(key) ? 'china' : 'world', key]));
+  if (typeof TRAVEL_AREA_GEO !== 'undefined') Object.keys(TRAVEL_AREA_GEO).forEach(key => {
+    if (key.length >= 2) searchable.push([key, TRAVEL_AREA_GEO[key], TRAVEL_AREA_GEO[key][2], TRAVEL_AREA_GEO[key][3]]);
+  });
+  searchable.sort((a, b) => b[0].length - a[0].length);
+  const matched = searchable.find(item => normalized.includes(item[0]));
+  if (matched) {
+    const geo = matched[1];
+    return { lon: geo[0], lat: geo[1], scope: matched[2], canonical: matched[3] };
   }
   return null;
 }

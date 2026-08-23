@@ -747,7 +747,7 @@ const App = (function () {
     const chinaPins = [], worldPins = [], noGeo = [];
     list.forEach(r => {
       const status = r.status === '待打卡' ? '想去' : (r.status || '想去');
-      const geo = typeof resolveTravelGeo === 'function' ? resolveTravelGeo(r.city) : null;
+      const geo = typeof resolveTravelGeo === 'function' ? resolveTravelGeo(r.city, r.longitude, r.latitude) : null;
       const color = (typeof TRAVEL_PIN_COLOR !== 'undefined' && TRAVEL_PIN_COLOR[status]) || '#B8C2D0';
       if (geo) {
         const target = geo.scope === 'china' ? chinaPins : worldPins;
@@ -767,8 +767,8 @@ const App = (function () {
       <span><i style="background:#4ade80"></i>已打卡</span>
     </div>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=29',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=29',worldBox,worldPins)}</div>`;
-    const note = noGeo.length ? `<div class="travel-nogeo">以下城市暂无坐标，暂不标地图：${esc(noGeo.join('、'))}</div>` : '';
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=30',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=30',worldBox,worldPins)}</div>`;
+    const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + legend + maps + note + hint;
   }
