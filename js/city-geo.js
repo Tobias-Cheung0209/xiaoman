@@ -59,3 +59,58 @@ const CITY_GEO = {
   '悉尼': [151.21, -33.87], '墨尔本': [144.96, -37.81], '黄金海岸': [153.43, -28.02],
   '奥克兰': [174.76, -36.85], '皇后镇': [168.66, -45.03], '珀斯': [115.86, -31.95],
 };
+
+/* 国家级目的地使用首都或具有代表性的中心坐标。别名只负责名称解析，
+ * 不会改写用户原本填写的“城市/国家”。 */
+const TRAVEL_GEO_ALIASES = {
+  '中国': '北京', '中华人民共和国': '北京', 'china': '北京',
+  '日本': '东京', 'japan': '东京', '韩国': '首尔', '南韩': '首尔', 'south korea': '首尔',
+  '泰国': '曼谷', 'thailand': '曼谷', '新加坡共和国': '新加坡', 'singapore': '新加坡',
+  '马来西亚': '吉隆坡', 'malaysia': '吉隆坡', '印度尼西亚': '巴厘岛', '印尼': '巴厘岛', 'indonesia': '巴厘岛',
+  '越南': '河内', 'vietnam': '河内', '菲律宾': '马尼拉', 'philippines': '马尼拉',
+  '阿联酋': '迪拜', '阿拉伯联合酋长国': '迪拜', 'uae': '迪拜',
+  '印度': '新德里', 'india': '新德里', '尼泊尔': '加德满都', 'nepal': '加德满都',
+  '英国': '伦敦', '联合王国': '伦敦', 'uk': '伦敦', 'united kingdom': '伦敦',
+  '法国': '巴黎', 'france': '巴黎', '意大利': '罗马', 'italy': '罗马',
+  '西班牙': '马德里', 'spain': '马德里', '葡萄牙': '里斯本', 'portugal': '里斯本',
+  '荷兰': '阿姆斯特丹', 'netherlands': '阿姆斯特丹', '德国': '柏林', 'germany': '柏林',
+  '奥地利': '维也纳', 'austria': '维也纳', '希腊': '雅典', 'greece': '雅典',
+  '捷克': '布拉格', 'czechia': '布拉格', '匈牙利': '布达佩斯', 'hungary': '布达佩斯',
+  '丹麦': '哥本哈根', 'denmark': '哥本哈根', '瑞典': '斯德哥尔摩', 'sweden': '斯德哥尔摩',
+  '挪威': '奥斯陆', 'norway': '奥斯陆', '冰岛': '雷克雅未克', 'iceland': '雷克雅未克',
+  '爱尔兰': '都柏林', 'ireland': '都柏林', '比利时': '布鲁塞尔', 'belgium': '布鲁塞尔',
+  '俄罗斯': '莫斯科', '俄国': '莫斯科', 'russia': '莫斯科',
+  '美国': '纽约', '美利坚合众国': '纽约', 'usa': '纽约', 'united states': '纽约',
+  '加拿大': '多伦多', 'canada': '多伦多', '墨西哥': '墨西哥城', 'mexico': '墨西哥城',
+  '巴西': '里约热内卢', 'brazil': '里约热内卢', '阿根廷': '布宜诺斯艾利斯', 'argentina': '布宜诺斯艾利斯',
+  '秘鲁': '利马', 'peru': '利马',
+  '埃及': '开罗', '阿拉伯埃及共和国': '开罗', 'egypt': '开罗',
+  '南非': '开普敦', 'south africa': '开普敦', '摩洛哥': '马拉喀什', 'morocco': '马拉喀什',
+  '肯尼亚': '内罗毕', 'kenya': '内罗毕', '澳大利亚': '悉尼', '澳洲': '悉尼', 'australia': '悉尼',
+  '新西兰': '奥克兰', 'new zealand': '奥克兰',
+};
+
+const CHINA_TRAVEL_GEO = new Set([
+  '北京','天津','上海','重庆','石家庄','太原','呼和浩特','沈阳','长春','哈尔滨','南京','杭州','合肥','福州','南昌','济南','郑州','武汉','长沙','广州','南宁','海口','成都','贵阳','昆明','拉萨','西安','兰州','西宁','银川','乌鲁木齐','香港','澳门','台北','三亚','青岛','大连','厦门','深圳','苏州','丽江','大理','桂林','敦煌','九寨沟','张家界','黄山','泰山','千岛湖','鼓浪屿','西湖'
+]);
+
+function resolveTravelGeo(rawName) {
+  const original = String(rawName || '').trim();
+  if (!original) return null;
+  const normalized = original.toLowerCase().replace(/[\s　]+/g, ' ').trim();
+  const compact = normalized.replace(/(?:市|省|自治区|特别行政区)$/u, '');
+  const candidates = [original, normalized, compact];
+  original.split(/[、,，/／·()（）]/).forEach(part => {
+    const value = part.trim();
+    if (value) candidates.push(value, value.toLowerCase());
+  });
+  for (const candidate of candidates) {
+    const canonical = TRAVEL_GEO_ALIASES[candidate] || candidate;
+    const geo = CITY_GEO[canonical];
+    if (geo) return {
+      lon: geo[0], lat: geo[1], canonical,
+      scope: CHINA_TRAVEL_GEO.has(canonical) ? 'china' : 'world',
+    };
+  }
+  return null;
+}

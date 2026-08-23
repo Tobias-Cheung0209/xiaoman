@@ -743,16 +743,17 @@ const App = (function () {
     const list = Store.getList({ collection: 'destinations' });
     const chinaBox = { lonMin: 73, lonMax: 136, latMin: 17, latMax: 54 };
     const worldBox = { lonMin: -130, lonMax: 150, latMin: -40, latMax: 70 };
-    const chinaCities = new Set(['北京','天津','上海','重庆','石家庄','太原','呼和浩特','沈阳','长春','哈尔滨','南京','杭州','合肥','福州','南昌','济南','郑州','武汉','长沙','广州','南宁','海口','成都','贵阳','昆明','拉萨','西安','兰州','西宁','银川','乌鲁木齐','香港','澳门','台北','三亚','青岛','大连','厦门','深圳','苏州','丽江','大理','桂林','敦煌','九寨沟','张家界','黄山','泰山','千岛湖','鼓浪屿','西湖']);
     const chinaPins = [], worldPins = [], noGeo = [];
     list.forEach(r => {
       const status = r.status === '待打卡' ? '想去' : (r.status || '想去');
-      const geo = (typeof CITY_GEO !== 'undefined' && CITY_GEO[r.city]);
+      const geo = typeof resolveTravelGeo === 'function' ? resolveTravelGeo(r.city) : null;
       const color = (typeof TRAVEL_PIN_COLOR !== 'undefined' && TRAVEL_PIN_COLOR[status]) || '#B8C2D0';
       if (geo) {
-        const p = { city: r.city, status, lon: geo[0], lat: geo[1], color };
-        if (chinaCities.has(r.city)) chinaPins.push(p); else worldPins.push(p);
-      } else noGeo.push(r.city);
+        const target = geo.scope === 'china' ? chinaPins : worldPins;
+        const samePlaceCount = target.filter(p => p.lon === geo.lon && p.lat === geo.lat).length;
+        const p = { city: r.city, status, lon: geo.lon, lat: geo.lat, color, offset: samePlaceCount };
+        target.push(p);
+      } else if (r.city) noGeo.push(r.city);
     });
     const stats = `<div class="stat-row">
       <div class="stat-card group-life"><div class="stat-value">${list.filter(r => r.status === '想去' || r.status === '待打卡').length}</div><div class="stat-label">想去</div></div>
@@ -764,8 +765,8 @@ const App = (function () {
       <span><i style="background:#3b82f6"></i>计划中</span>
       <span><i style="background:#4ade80"></i>已打卡</span>
     </div>`;
-    const imageMap = (title, src, box, pins) => `<div class="travel-map"><div class="travel-map-title">${title}</div><div class="travel-map-image"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100; return `<i class="map-pin" style="left:${left.toFixed(2)}%;top:${top.toFixed(2)}%;background:${p.color}" title="${esc(p.city)} · ${esc(p.status)}"></i>`; }).join('')}</div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=21',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=21',worldBox,worldPins)}</div>`;
+    const imageMap = (title, src, box, pins) => `<div class="travel-map"><div class="travel-map-title">${title}</div><div class="travel-map-image"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<i class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);background:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}"></i>`; }).join('')}</div></div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=26',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=26',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下城市暂无坐标，暂不标地图：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + legend + maps + note + hint;
