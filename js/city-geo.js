@@ -63,6 +63,21 @@ const CITY_GEO = {
  * 不会改写用户原本填写的“城市/国家”。 */
 const TRAVEL_GEO_ALIASES = {
   '中国': '北京', '中华人民共和国': '北京', 'china': '北京',
+  /* 省级名称直接落到省会/首府，确保核心脚本单独加载时也能打点。 */
+  '河北': '石家庄', '河北省': '石家庄', '山西': '太原', '山西省': '太原',
+  '内蒙古': '呼和浩特', '内蒙古自治区': '呼和浩特', '辽宁': '沈阳', '辽宁省': '沈阳',
+  '吉林': '长春', '吉林省': '长春', '黑龙江': '哈尔滨', '黑龙江省': '哈尔滨',
+  '江苏': '南京', '江苏省': '南京', '浙江': '杭州', '浙江省': '杭州',
+  '安徽': '合肥', '安徽省': '合肥', '福建': '福州', '福建省': '福州',
+  '江西': '南昌', '江西省': '南昌', '山东': '济南', '山东省': '济南',
+  '河南': '郑州', '河南省': '郑州', '湖北': '武汉', '湖北省': '武汉',
+  '湖南': '长沙', '湖南省': '长沙', '广东': '广州', '广东省': '广州',
+  '广西': '南宁', '广西壮族自治区': '南宁', '海南': '海口', '海南省': '海口',
+  '四川': '成都', '四川省': '成都', '贵州': '贵阳', '贵州省': '贵阳',
+  '云南': '昆明', '云南省': '昆明', '西藏': '拉萨', '西藏自治区': '拉萨',
+  '陕西': '西安', '陕西省': '西安', '甘肃': '兰州', '甘肃省': '兰州',
+  '青海': '西宁', '青海省': '西宁', '宁夏': '银川', '宁夏回族自治区': '银川',
+  '新疆': '乌鲁木齐', '新疆维吾尔自治区': '乌鲁木齐',
   '日本': '东京', 'japan': '东京', '韩国': '首尔', '南韩': '首尔', 'south korea': '首尔',
   '泰国': '曼谷', 'thailand': '曼谷', '新加坡共和国': '新加坡', 'singapore': '新加坡',
   '马来西亚': '吉隆坡', 'malaysia': '吉隆坡', '印度尼西亚': '巴厘岛', '印尼': '巴厘岛', 'indonesia': '巴厘岛',
@@ -124,6 +139,10 @@ function resolveTravelGeo(rawName, manualLon, manualLat) {
   /* 支持“中国青海省”“德国柏林”等复合填写；长名称优先，避免短名称误命中。 */
   const searchable = [];
   Object.keys(CITY_GEO).forEach(key => searchable.push([key.toLowerCase(), CITY_GEO[key], CHINA_TRAVEL_GEO.has(key) ? 'china' : 'world', key]));
+  Object.keys(TRAVEL_GEO_ALIASES).forEach(key => {
+    const canonical = TRAVEL_GEO_ALIASES[key], geo = CITY_GEO[canonical];
+    if (key.length >= 2 && geo) searchable.push([key.toLowerCase(), geo, CHINA_TRAVEL_GEO.has(canonical) ? 'china' : 'world', canonical]);
+  });
   if (typeof TRAVEL_AREA_GEO !== 'undefined') Object.keys(TRAVEL_AREA_GEO).forEach(key => {
     if (key.length >= 2) searchable.push([key, TRAVEL_AREA_GEO[key], TRAVEL_AREA_GEO[key][2], TRAVEL_AREA_GEO[key][3]]);
   });
