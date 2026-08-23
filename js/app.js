@@ -766,20 +766,22 @@ const App = (function () {
       <span><i style="background:#3b82f6"></i>计划中</span>
       <span><i style="background:#4ade80"></i>已打卡</span>
     </div>`;
-    const imageMap = (title, src, box, pins) => `<div class="travel-map"><div class="travel-map-title">${title}</div><div class="travel-map-image"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}<div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=27',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=27',worldBox,worldPins)}</div>`;
+    const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=28',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=28',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下城市暂无坐标，暂不标地图：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + legend + maps + note + hint;
   }
 
   function bindTravelMap() {
-    document.querySelectorAll('.travel-map-image').forEach(map => {
+    document.querySelectorAll('.travel-map').forEach(map => {
+      const viewport = map.querySelector('.travel-map-viewport');
+      const stage = map.querySelector('.travel-map-stage');
       const card = map.querySelector('.travel-pin-card');
       if (!card) return;
-      map.querySelectorAll('.map-pin').forEach(pin => pin.onclick = event => {
+      stage.querySelectorAll('.map-pin').forEach(pin => pin.onclick = event => {
         event.stopPropagation();
-        map.querySelectorAll('.map-pin').forEach(item => item.setAttribute('aria-expanded', String(item === pin)));
+        stage.querySelectorAll('.map-pin').forEach(item => item.setAttribute('aria-expanded', String(item === pin)));
         card.querySelector('[data-pin-city]').textContent = pin.dataset.city;
         card.querySelector('[data-pin-location]').textContent = pin.dataset.canonical && pin.dataset.canonical !== pin.dataset.city ? `定位：${pin.dataset.canonical}` : '';
         card.querySelector('[data-pin-status]').textContent = pin.dataset.status;
@@ -793,7 +795,81 @@ const App = (function () {
         card.hidden = false;
       });
       const close = card.querySelector('.travel-pin-close');
-      close.onclick = event => { event.stopPropagation(); card.hidden = true; map.querySelectorAll('.map-pin').forEach(pin => pin.setAttribute('aria-expanded', 'false')); };
+      close.onclick = event => { event.stopPropagation(); card.hidden = true; stage.querySelectorAll('.map-pin').forEach(pin => pin.setAttribute('aria-expanded', 'false')); };
+
+      let scale = 1, x = 0, y = 0;
+      const pointers = new Map();
+      let gesture = null;
+      const clamp = () => {
+        const vw = viewport.clientWidth, vh = viewport.clientHeight;
+        const sw = stage.offsetWidth * scale, sh = stage.offsetHeight * scale;
+        x = sw <= vw ? (vw - sw) / 2 : Math.min(0, Math.max(vw - sw, x));
+        y = sh <= vh ? (vh - sh) / 2 : Math.min(0, Math.max(vh - sh, y));
+      };
+      const apply = () => { clamp(); stage.style.transform = `translate(${x}px,${y}px) scale(${scale})`; };
+      const reset = () => { scale = 1; x = 0; y = 0; apply(); };
+      const zoomAt = (next, cx, cy) => {
+        const old = scale;
+        scale = Math.max(1, Math.min(4, next));
+        const ratio = scale / old;
+        x = cx - (cx - x) * ratio;
+        y = cy - (cy - y) * ratio;
+        apply();
+      };
+      const closeExpanded = () => {
+        map.classList.remove('is-expanded');
+        map.querySelector('.travel-map-controls').hidden = true;
+        document.body.classList.remove('travel-map-open');
+        pointers.clear(); gesture = null; reset();
+      };
+      map.querySelector('.travel-map-expand').onclick = () => {
+        document.querySelectorAll('.travel-map.is-expanded').forEach(other => { if (other !== map) other.querySelector('[data-map-close]').click(); });
+        map.classList.add('is-expanded');
+        map.querySelector('.travel-map-controls').hidden = false;
+        document.body.classList.add('travel-map-open');
+        requestAnimationFrame(reset);
+      };
+      map.querySelector('[data-map-close]').onclick = closeExpanded;
+      map.querySelector('[data-map-reset]').onclick = reset;
+      map.querySelectorAll('[data-map-zoom]').forEach(button => button.onclick = () => {
+        const rect = viewport.getBoundingClientRect();
+        zoomAt(scale + (button.dataset.mapZoom === 'in' ? .5 : -.5), rect.width / 2, rect.height / 2);
+      });
+      viewport.onwheel = event => {
+        if (!map.classList.contains('is-expanded')) return;
+        event.preventDefault();
+        const rect = viewport.getBoundingClientRect();
+        zoomAt(scale * (event.deltaY < 0 ? 1.15 : .87), event.clientX - rect.left, event.clientY - rect.top);
+      };
+      stage.onpointerdown = event => {
+        if (!map.classList.contains('is-expanded') || event.target.closest('.map-pin')) return;
+        event.preventDefault(); stage.setPointerCapture(event.pointerId);
+        pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
+        if (pointers.size === 1) gesture = { type:'pan', px:event.clientX, py:event.clientY };
+        else if (pointers.size === 2) {
+          const [a,b] = [...pointers.values()], dx=b.x-a.x, dy=b.y-a.y;
+          gesture = { type:'pinch', distance:Math.hypot(dx,dy), scale, x, y, mx:(a.x+b.x)/2, my:(a.y+b.y)/2 };
+        }
+      };
+      stage.onpointermove = event => {
+        if (!pointers.has(event.pointerId) || !gesture) return;
+        event.preventDefault(); pointers.set(event.pointerId, { x:event.clientX, y:event.clientY });
+        if (pointers.size === 1 && gesture.type === 'pan') {
+          x += event.clientX - gesture.px; y += event.clientY - gesture.py;
+          gesture.px = event.clientX; gesture.py = event.clientY; apply();
+        } else if (pointers.size >= 2) {
+          const [a,b] = [...pointers.values()], distance=Math.hypot(b.x-a.x,b.y-a.y), next=Math.max(1,Math.min(4,gesture.scale*distance/Math.max(1,gesture.distance))), ratio=next/gesture.scale;
+          scale=next; x=gesture.mx-(gesture.mx-gesture.x)*ratio; y=gesture.my-(gesture.my-gesture.y)*ratio; apply();
+        }
+      };
+      const pointerEnd = event => {
+        pointers.delete(event.pointerId);
+        if (pointers.size === 1) { const p=[...pointers.values()][0]; gesture={type:'pan',px:p.x,py:p.y}; }
+        else if (!pointers.size) gesture=null;
+      };
+      stage.onpointerup = pointerEnd;
+      stage.onpointercancel = pointerEnd;
+      map.onkeydown = event => { if (event.key === 'Escape' && map.classList.contains('is-expanded')) closeExpanded(); };
     });
   }
 
