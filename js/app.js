@@ -431,6 +431,7 @@ const App = (function () {
     else if (modId === 'invest' && tab.id === 'market') bindInvestMarket();
     else if (modId === 'invest' && tab.id === 'logs') bindStockLog(tab);
     else if (modId === 'jikui' && tab.id === 'board') bindJikuiBoard();
+    else if (modId === 'travel' && tab.id === 'overview') bindTravelMap();
     const funRandom=document.getElementById('fun-random'); if(funRandom)funRandom.onclick=()=>{const want=Store.getList('funItems').filter(r=>r.status==='想看'),el=document.getElementById('fun-random-result');if(want.length&&el)el.textContent='🎯 今天看：'+want[Math.floor(Math.random()*want.length)].name;};
     const addBar = document.getElementById('quick-add-bar');
     if (addBar && !(modId === 'discipline' && tab.id === 'plans')) addBar.onkeydown = e => {
@@ -742,7 +743,7 @@ const App = (function () {
   function renderTravelOverview(tab) {
     const list = Store.getList({ collection: 'destinations' });
     const chinaBox = { lonMin: 73, lonMax: 136, latMin: 17, latMax: 54 };
-    const worldBox = { lonMin: -130, lonMax: 150, latMin: -40, latMax: 70 };
+    const worldBox = { lonMin: -158, lonMax: 202, latMin: -83, latMax: 90 };
     const chinaPins = [], worldPins = [], noGeo = [];
     list.forEach(r => {
       const status = r.status === '待打卡' ? '想去' : (r.status || '想去');
@@ -751,7 +752,7 @@ const App = (function () {
       if (geo) {
         const target = geo.scope === 'china' ? chinaPins : worldPins;
         const samePlaceCount = target.filter(p => p.lon === geo.lon && p.lat === geo.lat).length;
-        const p = { city: r.city, status, lon: geo.lon, lat: geo.lat, color, offset: samePlaceCount };
+        const p = { city: r.city, canonical: geo.canonical, status, lon: geo.lon, lat: geo.lat, color, offset: samePlaceCount, spots: r.spots || '', food: r.food || '', goDate: r.goDate || '', travelDays: r.travelDays || '' };
         target.push(p);
       } else if (r.city) noGeo.push(r.city);
     });
@@ -765,11 +766,35 @@ const App = (function () {
       <span><i style="background:#3b82f6"></i>计划中</span>
       <span><i style="background:#4ade80"></i>已打卡</span>
     </div>`;
-    const imageMap = (title, src, box, pins) => `<div class="travel-map"><div class="travel-map-title">${title}</div><div class="travel-map-image"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<i class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);background:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}"></i>`; }).join('')}</div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=26',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=26',worldBox,worldPins)}</div>`;
+    const imageMap = (title, src, box, pins) => `<div class="travel-map"><div class="travel-map-title">${title}</div><div class="travel-map-image"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}<div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div></div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=27',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=27',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下城市暂无坐标，暂不标地图：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + legend + maps + note + hint;
+  }
+
+  function bindTravelMap() {
+    document.querySelectorAll('.travel-map-image').forEach(map => {
+      const card = map.querySelector('.travel-pin-card');
+      if (!card) return;
+      map.querySelectorAll('.map-pin').forEach(pin => pin.onclick = event => {
+        event.stopPropagation();
+        map.querySelectorAll('.map-pin').forEach(item => item.setAttribute('aria-expanded', String(item === pin)));
+        card.querySelector('[data-pin-city]').textContent = pin.dataset.city;
+        card.querySelector('[data-pin-location]').textContent = pin.dataset.canonical && pin.dataset.canonical !== pin.dataset.city ? `定位：${pin.dataset.canonical}` : '';
+        card.querySelector('[data-pin-status]').textContent = pin.dataset.status;
+        card.querySelector('[data-pin-status]').style.color = getComputedStyle(pin).getPropertyValue('--pin-color');
+        const details = [];
+        if (pin.dataset.date) details.push(`📅 ${pin.dataset.date}`);
+        if (pin.dataset.days) details.push(`🌙 ${pin.dataset.days} 天`);
+        if (pin.dataset.spots) details.push(`📍 ${pin.dataset.spots}`);
+        if (pin.dataset.food) details.push(`🍜 ${pin.dataset.food}`);
+        card.querySelector('[data-pin-details]').textContent = details.join(' · ') || '暂无更多行程信息';
+        card.hidden = false;
+      });
+      const close = card.querySelector('.travel-pin-close');
+      close.onclick = event => { event.stopPropagation(); card.hidden = true; map.querySelectorAll('.map-pin').forEach(pin => pin.setAttribute('aria-expanded', 'false')); };
+    });
   }
 
   /* ============================================================
