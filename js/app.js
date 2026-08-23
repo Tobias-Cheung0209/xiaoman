@@ -756,21 +756,25 @@ const App = (function () {
         target.push(p);
       } else if (r.city) noGeo.push(r.city);
     });
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-life"><div class="stat-value">${list.filter(r => r.status === '想去' || r.status === '待打卡').length}</div><div class="stat-label">想去</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${list.filter(r => r.status === '计划中').length}</div><div class="stat-label">计划中</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${list.filter(r => r.status === '已打卡').length}</div><div class="stat-label">已打卡</div></div>
-    </div>`;
-    const legend = `<div class="travel-legend">
-      <span><i style="background:#fb923c"></i>想去</span>
-      <span><i style="background:#3b82f6"></i>计划中</span>
-      <span><i style="background:#4ade80"></i>已打卡</span>
-    </div>`;
+    const groups = {
+      '想去': list.filter(r => r.status === '想去' || r.status === '待打卡'),
+      '计划中': list.filter(r => r.status === '计划中'),
+      '已打卡': list.filter(r => r.status === '已打卡'),
+    };
+    const latestName = rows => rows.slice().sort((a,b) => String(b._updatedAt || b.goDate || '').localeCompare(String(a._updatedAt || a.goDate || '')))[0]?.city || '';
+    const nextPlan = groups['计划中'].filter(r => r.goDate).sort((a,b) => r.goDate.localeCompare(b.goDate))[0];
+    const total = list.length, visited = groups['已打卡'].length, pct = total ? Math.round(visited / total * 100) : 0;
+    const statusCards = [
+      ['想去','🧡','#fb923c',latestName(groups['想去']) || '等待灵感'],
+      ['计划中','💙','#3b82f6',nextPlan ? nextPlan.goDate.slice(5).replace('-','月') + '日' : (latestName(groups['计划中']) || '还没排期')],
+      ['已打卡','💚','#4ade80',latestName(groups['已打卡']) || '等待出发'],
+    ];
+    const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=31',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=31',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=32',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=32',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
-    return stats + legend + maps + note + hint;
+    return stats + maps + note + hint;
   }
 
   function bindTravelMap() {
