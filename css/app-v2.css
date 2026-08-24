@@ -768,6 +768,7 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
   line-height: 1.4;
   pointer-events: auto;
 }
+.xm-bubble[hidden] { display: none !important; }
 .xm-bubble-reminder b,
 .xm-bubble-reminder span {
   display: -webkit-box;
@@ -784,6 +785,14 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 .xm-bubble-view {
   justify-self: start; border: 0; padding: 4px 0 0;
   background: transparent; color: var(--work-deep); font-size: 12px; font-weight: 700;
+}
+#xiaoman-wrap.xm-has-reminder #xm-doll::after {
+  content: '';
+  position: absolute; top: 13px; right: 12px;
+  width: 9px; height: 9px;
+  border: 2px solid rgba(255,252,253,.95);
+  border-radius: 50%; background: var(--life-deep);
+  box-shadow: 0 2px 7px rgba(232,108,125,.35);
 }
 .xm-bubble::after {
   content: '';

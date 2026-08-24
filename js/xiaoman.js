@@ -145,7 +145,7 @@ const Xiaoman = (function () {
     viewBtn.className = 'xm-bubble-view';
     viewBtn.type = 'button';
     viewBtn.textContent = summary.count ? '查看今日提醒' : '知道了';
-    closeBtn.onclick = () => { hideBubble(); if (isAwake()) expandMenu(); };
+    closeBtn.onclick = e => { e.stopPropagation(); hideBubble(); if (isAwake()) expandMenu(); };
     viewBtn.onclick = () => {
       hideBubble();
       close();
@@ -167,7 +167,7 @@ const Xiaoman = (function () {
     clearTimeout(bubbleTimer);
     bubbleTimer = null;
     bubble.hidden = true;
-    bubble.classList.remove('show');
+    bubble.classList.remove('show', 'below', 'xm-bubble-reminder');
   }
 
   /* ---------------- 菜单收起 / 恢复（说点啥时不与气泡重叠） ---------------- */
@@ -264,6 +264,7 @@ const Xiaoman = (function () {
       case 'say':
         // 说点啥：收起菜单，气泡独占，小满保持醒着
         hidePanel();
+        wrap.classList.remove('xm-has-reminder');
         collapseMenu();
         sayReminder((App.getReminderSummary && App.getReminderSummary()) || randomLine());
         break;
@@ -371,7 +372,8 @@ const Xiaoman = (function () {
     search.addEventListener('keydown', e => {
       if (e.key === 'Escape') hidePanel();
     });
-    try { const brief=App.getReminderSummary&&App.getReminderSummary(); if (!sessionStorage.getItem('xiaoman:nudge') && brief && brief.count) { sessionStorage.setItem('xiaoman:nudge','1'); setTimeout(()=>{ open(); setTimeout(()=>{ collapseMenu(); sayReminder(brief); },1050); },1800); } } catch(_) {}
+    // 有提醒时只显示一个安静的小圆点；不再自动唤醒或弹出气泡。
+    try { const brief=App.getReminderSummary&&App.getReminderSummary(); if (brief && brief.count) wrap.classList.add('xm-has-reminder'); } catch(_) {}
   }
 
   return { init };
