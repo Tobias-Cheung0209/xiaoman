@@ -599,13 +599,18 @@ const App = (function () {
     const today=new Date();today.setHours(0,0,0,0);
     return Store.getList({collection:'events'}).map(r=>{const next=computeNextEvent(r,today);return next?{r,next,days:Math.round((next-today)/86400000)}:null;}).filter(Boolean).sort((a,b)=>a.days-b.days).slice(0,limit||3);
   }
-  function renderHomeImportantEvents() {
-    const end=new Date();end.setDate(end.getDate()+30);const birthdayRows=upcomingImportantEvents(100).filter(x=>(x.r.type||'')==='生日'&&x.days<=14).map(x=>({label:'生日',title:x.r.name,date:dateKey(x.next),days:x.days,priority:0}));
-    const personal=upcomingImportantEvents(100).filter(x=>(x.r.type||'')!=='生日'&&x.days<=30).map(x=>({label:x.r.type||'重要日期',title:x.r.name,date:dateKey(x.next),days:x.days,priority:1}));
-    const linked=collectTimeEvents(todayKey(),dateKey(end)).filter(e=>e.sourceCollection!=='events'&&['home','money','invest','travel','health','file'].includes(e.category)).map(e=>({label:(CAL_CATS[e.category]||['事项'])[0],title:e.title,date:e.date,days:daysUntil(e.date),priority:2}));
-    const seen=new Set(),ordinary=[...personal,...linked].sort((a,b)=>a.days-b.days).filter(x=>{const k=x.label+x.title+x.date;if(seen.has(k))return false;seen.add(k);return true;}).slice(0,3),list=[...birthdayRows,...ordinary].sort((a,b)=>a.days-b.days);
-    const rows=list.length?list.map(r=>`<span class="home-event-row"><i>${esc(r.label)}</i><b>${r.days===0?`${esc(r.title)}就是今天`:`距离${esc(r.title)}还有${r.days}天`}</b><small>（${Number(r.date.slice(5,7))}月${Number(r.date.slice(8,10))}日）</small></span>`).join(''):`<span class="home-event-row empty"><i>＋</i><b>未来30天暂无近期节点</b><small>点击查看日历</small></span>`;
-    return `<div class="section-title home-event-title">📅 近期节点 <button data-goto="calendar">查看全部</button></div><button class="home-event-card" data-goto="calendar">${rows}</button>`;
+  function renderHomeSchedule() {
+    const today=todayKey(),weekEnd=new Date();weekEnd.setDate(weekEnd.getDate()+7);const monthEnd=new Date();monthEnd.setDate(monthEnd.getDate()+30),past=new Date();past.setFullYear(past.getFullYear()-1);
+    const todayEvents=collectTimeEvents(today,today),weekEvents=collectTimeEvents(today,dateKey(weekEnd)),overdue=collectTimeEvents(dateKey(past),today).filter(e=>e.date<today).length;
+    const birthdayRows=upcomingImportantEvents(100).filter(x=>(x.r.type||'')==='生日'&&x.days<=14).map(x=>({label:'生日',title:x.r.name,date:dateKey(x.next),days:x.days}));
+    const personal=upcomingImportantEvents(100).filter(x=>(x.r.type||'')!=='生日'&&x.days<=30).map(x=>({label:x.r.type||'重要日期',title:x.r.name,date:dateKey(x.next),days:x.days}));
+    const linked=collectTimeEvents(today,dateKey(monthEnd)).filter(e=>e.sourceCollection!=='events'&&['home','money','invest','travel','health','file'].includes(e.category)).map(e=>({label:(CAL_CATS[e.category]||['事项'])[0],title:e.title,date:e.date,days:daysUntil(e.date)}));
+    const seen=new Set(),special=[...birthdayRows,...personal,...linked].sort((a,b)=>a.days-b.days).filter(x=>{const k=x.label+x.title+x.date;if(seen.has(k))return false;seen.add(k);return true;}).slice(0,birthdayRows.length+3);
+    const ordinary=weekEvents.filter(e=>!['home','money','invest','travel','health','file','life'].includes(e.category)).slice(0,2);
+    const scheduleRows=ordinary.map(e=>`<span class="home-schedule-row"><i class="cat-${e.category}">${(CAL_CATS[e.category]||['事项','•'])[1]}</i><b>${esc(e.title)}</b><small>${e.date===today?'今天':`${Number(e.date.slice(5,7))}月${Number(e.date.slice(8,10))}日`}</small></span>`).join('');
+    const nodeRows=special.map(r=>`<span class="home-schedule-row node"><i>${esc(r.label)}</i><b>${r.days===0?`${esc(r.title)}就是今天`:`距离${esc(r.title)}还有${r.days}天`}</b><small>${Number(r.date.slice(5,7))}月${Number(r.date.slice(8,10))}日</small></span>`).join('');
+    const body=scheduleRows||nodeRows?`${scheduleRows}${nodeRows}`:`<span class="home-schedule-empty"><b>未来7天没有安排</b><small>留一点空白，也是一种安排</small></span>`;
+    return `<div class="section-title home-schedule-title">🗓️ 近期安排 <button data-goto="calendar">查看日历</button></div><button class="home-schedule-card" data-goto="calendar"><span class="home-schedule-metrics"><i><b>${todayEvents.length}</b>今天</i><i><b>${weekEvents.length}</b>未来7天</i><i class="${overdue?'warn':''}"><b>${overdue}</b>已逾期</i></span><span class="home-schedule-list">${body}</span></button>`;
   }
 
   /* ============================================================
@@ -796,7 +801,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=44',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=44',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=45',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=45',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -974,8 +979,14 @@ const App = (function () {
     Store.getList('docs').filter(r=>(r.status||'待处理')!=='已归档').forEach(r=>add(r.reviewDate,`复查文档：${r.name}`,'file','jikui','docs','docs',r._id));
     Store.getList('files').forEach(r=>add(r.expire,`${r.name}到期`,'file','files','files','files',r._id,{important:true}));
     Store.getList('destinations').forEach(r=>add(r.goDate,`${r.city}出行`,'travel','travel','destinations','destinations',r._id,{important:true}));
-    const ps=Store.getSetting('periodSettings',{}), cycleDate=nextCycleDate(ps.cycleStart,parseInt(ps.cycleLen)||28,from);
-    if(ps.remind&&cycleDate) add(cycleDate,'预计经期开始','health','toolbox','youzi','',null,{predicted:true});
+    const ps=Store.getSetting('periodSettings',{}), cycleLen=parseInt(ps.cycleLen)||28, cycleDate=nextCycleDate(ps.cycleStart,cycleLen,from);
+    if(ps.remind&&cycleDate){
+      add(cycleDate,'预计经期开始','health','toolbox','youzi','',null,{predicted:true});
+      const ovulation=new Date(cycleDate+'T00:00:00');ovulation.setDate(ovulation.getDate()-14);
+      const fertile=new Date(ovulation);fertile.setDate(fertile.getDate()-5);
+      add(dateKey(ovulation),'预计排卵日','health','toolbox','youzi','',null,{predicted:true});
+      add(dateKey(fertile),'预计易孕期开始','health','toolbox','youzi','',null,{predicted:true});
+    }
     const hour=new Date().getHours(); if(todayKey()>=from&&todayKey()<=to&&hour>=20&&!Store.getList('rigongLogs').some(r=>r.date===todayKey())) add(todayKey(),'写下今日回望','review','rigong','overview','rigongLogs',null);
     return out.sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
   }
@@ -988,7 +999,8 @@ const App = (function () {
     const cells=Array.from({length:42},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);const key=dateKey(d),events=byDate[key]||[],outside=d.getMonth()!==m;return `<button class="global-cal-day ${outside?'outside':''} ${key===globalCalendarDate?'selected':''} ${key===todayKey()?'today':''}" data-cal-date="${key}"><b>${d.getDate()}</b><span>${events.slice(0,3).map(e=>`<i class="cat-${e.category}"></i>`).join('')}</span>${events.length?`<small>${events.length}项</small>`:''}</button>`;}).join('');
     const dayEvents=(byDate[globalCalendarDate]||[]).map(e=>{const cat=CAL_CATS[e.category]||['事项','•'];return `<div class="global-agenda-row"><i class="cat-${e.category}">${cat[1]}</i><button data-event-open="${esc(e.sourceModule||'')}" data-event-tab="${esc(e.sourceTab||'')}"><b>${esc(e.title)}</b><small>${esc(e.time||cat[0])}${e.predicted?' · 预计':''}</small></button>${e.sourceCollection==='plans'?`<button class="agenda-done" data-event-done="${e.sourceId}">✓</button>`:''}</div>`;}).join('')||'<div class="empty-hint">这一天没有安排</div>';
     const filters=['all',...Object.keys(CAL_CATS)].map(k=>`<button data-cal-filter="${k}" class="${globalCalendarFilter===k?'active':''}">${k==='all'?'全部':CAL_CATS[k][0]}</button>`).join('');
-    return `<div class="global-calendar"><div class="calendar-summary"><div><small>📅 时间中枢</small><strong>本月 ${all.filter(e=>e.date.startsWith(`${y}-${String(m+1).padStart(2,'0')}`)).length} 项安排</strong></div><button id="calendar-today">今天</button></div><div class="calendar-filters">${filters}</div><div class="global-calendar-layout"><section class="global-calendar-card"><header><button id="calendar-prev">‹</button><h3>${y}年${m+1}月</h3><button id="calendar-next">›</button></header><div class="global-weekdays">${weekdays}</div><div class="global-cal-grid">${cells}</div></section><section class="global-agenda"><h3>${globalCalendarDate.slice(5).replace('-','月')}日 · ${dayEvents?((byDate[globalCalendarDate]||[]).length+'项'):''}</h3>${dayEvents}</section></div></div>`;
+    const important=upcomingImportantEvents(3),importantRows=important.length?important.map(x=>`<button data-important-edit="${x.r._id}"><i>🗓️</i><span><b>${esc(x.r.name)}</b><small>${esc(x.r.type||'重要日期')} · ${x.days===0?'今天':x.days===1?'明天':`${x.days}天后`} · ${Number(dateKey(x.next).slice(5,7))}月${Number(dateKey(x.next).slice(8,10))}日</small></span><em>›</em></button>`).join(''):'<div class="empty-hint">还没有重要日期，可以从生活模块添加</div>';
+    return `<div class="global-calendar"><div class="calendar-summary"><div><small>📅 时间中枢</small><strong>本月 ${all.filter(e=>e.date.startsWith(`${y}-${String(m+1).padStart(2,'0')}`)).length} 项安排</strong></div><button id="calendar-today">今天</button></div><div class="calendar-filters">${filters}</div><div class="global-calendar-layout"><section class="global-calendar-card"><header><button id="calendar-prev">‹</button><h3>${y}年${m+1}月</h3><button id="calendar-next">›</button></header><div class="global-weekdays">${weekdays}</div><div class="global-cal-grid">${cells}</div></section><div class="global-calendar-side"><section class="global-agenda"><h3>${globalCalendarDate.slice(5).replace('-','月')}日 · ${dayEvents?((byDate[globalCalendarDate]||[]).length+'项'):''}</h3>${dayEvents}</section><section class="calendar-important"><header><div><small>生活 · 重要日期</small><h3>最近三个重要日子</h3></div><button id="important-view-all">查看全部</button></header>${importantRows}</section></div></div></div>`;
   }
   function bindGlobalCalendar(){
     const shift=n=>{globalCalendarMonth=new Date(globalCalendarMonth.getFullYear(),globalCalendarMonth.getMonth()+n,1);globalCalendarDate='';renderContent();};
@@ -997,6 +1009,9 @@ const App = (function () {
     document.querySelectorAll('[data-cal-filter]').forEach(b=>b.onclick=()=>{globalCalendarFilter=b.dataset.calFilter;renderContent();});
     document.querySelectorAll('[data-event-open]').forEach(b=>b.onclick=()=>{if(!b.dataset.eventOpen)return;selectModule(b.dataset.eventOpen);if(b.dataset.eventTab)selectTab(b.dataset.eventTab);});
     document.querySelectorAll('[data-event-done]').forEach(b=>b.onclick=()=>{Store.updateRecord('plans',b.dataset.eventDone,{status:'完成'});renderContent();});
+    const openImportant=id=>{selectModule('life');selectTab('events');if(id){const tab=MODULE_MAP.life.tabs.find(x=>x.id==='events');openForm(tab,id);}};
+    document.querySelectorAll('[data-important-edit]').forEach(b=>b.onclick=()=>openImportant(b.dataset.importantEdit));
+    const allImportant=document.getElementById('important-view-all');if(allImportant)allImportant.onclick=()=>openImportant('');
   }
 
   /* 投资：以梳理、计划与提醒为主；行情只是可选增强。 */
@@ -1630,8 +1645,6 @@ const App = (function () {
     };
     const ids={daily:['discipline','jikui','study','money','life'],review:['rigong','invest','travel'],more:['fun','files','toolbox']};
     const tiles=ids.daily.map(id=>tileFor(MODULE_MAP[id])).join(''),reviewTiles=ids.review.map(id=>tileFor(MODULE_MAP[id])).join(''),moreTiles=ids.more.map(id=>tileFor(MODULE_MAP[id])).join('');
-    const horizon=new Date();horizon.setDate(horizon.getDate()+7);const past=new Date();past.setFullYear(past.getFullYear()-1);const weekEvents=collectTimeEvents(todayKey(),dateKey(horizon)),overdue=collectTimeEvents(dateKey(past),todayKey()).filter(e=>e.date<todayKey()).length;
-    const calendarPreview=`<button class="home-calendar-card" data-goto="calendar"><span>📅</span><div><small>总览日历</small><b>${weekEvents.length?`未来7天有 ${weekEvents.length} 项安排`:'未来7天暂无安排'}</b><em>${overdue?`${overdue}项已逾期 · `:''}${weekEvents.slice(0,2).map(e=>e.title).join(' · ')||'从容安排接下来的日子'}</em></div><i>›</i></button>`;
     return `
       <div class="home-dashboard">
         <div class="hero-card">
@@ -1650,8 +1663,7 @@ const App = (function () {
         ${renderNoticeBanner()}
         <div class="section-title" id="today-reminders-title">📌 今日提醒</div>
         <div class="reminder-card" id="today-reminders">${reminders}</div>
-        ${renderHomeImportantEvents()}
-        ${calendarPreview}
+        ${renderHomeSchedule()}
         <div class="section-title">✨ 常用</div>
         <div class="module-grid">${tiles}</div>
         <div class="section-title">🌙 回顾与规划</div>
