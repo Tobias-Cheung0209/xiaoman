@@ -788,7 +788,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=42',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=42',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=43',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=43',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -902,12 +902,8 @@ const App = (function () {
     const year = new Date().getFullYear();
     const watched = items.filter(r => r.status === '看完' && (r.date || '').startsWith(year));
     const avgRating = watched.length ? (watched.reduce((s, r) => s + (parseFloat(r.rating) || 0), 0) / watched.length).toFixed(1) : '—';
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-life"><div class="stat-value">${items.filter(r => r.status === '想看').length}</div><div class="stat-label">想看</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${items.filter(r => r.status === '在看').length}</div><div class="stat-label">在看</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${watched.length}</div><div class="stat-label">今年看完</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${avgRating}</div><div class="stat-label">平均评分</div></div>
-    </div>`;
+    const watching=items.filter(r=>r.status==='在看'), next=watching[0]||items.find(r=>r.status==='想看');
+    const stats = `<section class="collection-summary fun-summary"><div><small>🎬 娱乐进度</small><strong>${next?`最近：${esc(next.name)}`:'还没有加入片单'}</strong><em>${next?esc(next.status||'想看'):'从一部真正想看的作品开始'}</em></div><div class="summary-pills"><span><b>${items.filter(r=>r.status==='想看').length}</b>想看</span><span><b>${watching.length}</b>在看</span><span><b>${watched.length}</b>今年完成</span>${watched.length?`<span><b>${avgRating}</b>平均评分</span>`:''}</div></section>`;
     const wantItems = items.filter(r => r.status === '想看');
     const recommend = wantItems.length ? `<div class="habit-section" style="text-align:center;">
       <button class="btn-primary" id="fun-random">🎲 今天看什么？</button>
@@ -967,6 +963,7 @@ const App = (function () {
     Store.getList('moneySubs').forEach(r=>add(r.nextDate,r.name,'money','money','subs','moneySubs',r._id));
     Store.getList('investHoldings').filter(r=>r.status!=='已清仓').forEach(r=>add(r.reviewDate,`复核 ${r.name} 投资假设`,'invest','invest','holdings','investHoldings',r._id,{priority:'高'}));
     Store.getList('investChecks').filter(r=>r.status==='待检查'||!r.status).forEach(r=>add(r.date,r.title,'invest','invest','checks','investChecks',r._id,{priority:'高'}));
+    Store.getList('docs').filter(r=>(r.status||'待处理')!=='已归档').forEach(r=>add(r.reviewDate,`复查文档：${r.name}`,'file','jikui','docs','docs',r._id));
     Store.getList('files').forEach(r=>add(r.expire,`${r.name}到期`,'file','files','files','files',r._id,{important:true}));
     Store.getList('destinations').forEach(r=>add(r.goDate,`${r.city}出行`,'travel','travel','destinations','destinations',r._id,{important:true}));
     const ps=Store.getSetting('periodSettings',{}), cycleDate=nextCycleDate(ps.cycleStart,parseInt(ps.cycleLen)||28,from);
@@ -1024,11 +1021,8 @@ const App = (function () {
     const cats = ['证件', '合同', '财务', '保单', '学习', '工作', '图片'];
     const tk = todayKey();
     const expiring = list.filter(r => r.expire && r.expire >= tk).sort((a, b) => (a.expire || '').localeCompare(b.expire || ''));
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-life"><div class="stat-value">${list.length}</div><div class="stat-label">文件总数</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${cats.length}</div><div class="stat-label">分类</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${expiring.length}</div><div class="stat-label">有到期日</div></div>
-    </div>`;
+    const activeCats=cats.filter(cat=>list.some(r=>r.cat===cat)), soon=expiring.filter(r=>r.expire<=dateKey(new Date(Date.now()+30*86400000))), nearest=expiring[0];
+    const stats = `<section class="collection-summary files-summary"><div><small>🗂️ 文件状态</small><strong>${list.length?`${list.length} 份索引，${soon.length} 份近期到期`:'还没有建立文件索引'}</strong><em>${nearest?`最近到期：${esc(nearest.name)} · ${nearest.expire}`:'这里只保存位置与提醒，不存文件本体'}</em></div><div class="summary-pills"><span><b>${list.length}</b>总数</span><span><b>${activeCats.length}</b>已有分类</span><span class="${soon.length?'warn':''}"><b>${soon.length}</b>30天内</span></div></section>`;
     if (!list.length) return stats + `<div class="empty-state"><div class="empty-state-icon">🗂️</div><div class="empty-state-text">还没有文件记录，点击 + 添加</div></div>`;
     let html = stats;
     cats.forEach(cat => {
@@ -1277,8 +1271,13 @@ const App = (function () {
       const amount=baseAmount(r.amount,r.currency);
       return sum+amount*({'每月':1,'每季度':1/3,'每半年':1/6,'每年':1/12}[r.cycle||'每月']||1);
     },0);
+    const inferOwner=r=>r.owner||(/股|证券|投资/i.test(`${r.name||''}${r.type||''}`)?'股市投资':/副业|公司|项目/i.test(`${r.name||''}${r.type||''}`)?'副业资金':(r.currency||'€')==='€'?'德国账户':'其他资产');
+    const ownerTotals={'股市投资':0,'德国账户':0,'副业资金':0,'其他资产':0};
+    assets.forEach(r=>ownerTotals[inferOwner(r)]=(ownerTotals[inferOwner(r)]||0)+baseAmount(r.amount,r.currency));
+    const nativeByOwner=owner=>nativeMoney(assets.filter(r=>inferOwner(r)===owner));
+    const assetSummary=`<button class="money-asset-summary" data-goto="money" data-tab-target="assets"><header><span>资产总额</span><i>›</i></header><div><span>股市投资</span><b>${esc(nativeByOwner('股市投资'))}</b></div><div><span>德国账户</span><b>${esc(nativeByOwner('德国账户'))}</b></div><div><span>副业资金</span><b>${esc(nativeByOwner('副业资金'))}</b></div>${ownerTotals['其他资产']?`<div><span>其他资产</span><b>${esc(nativeByOwner('其他资产'))}</b></div>`:''}<footer><span>总计</span><b>¥${compactMoney(dualValues(assetTotal).cny)} / €${compactMoney(dualValues(assetTotal).eur)}</b></footer></button>`;
     const cards = [
-      ['assets', assetTotal, '资产总额', 'asset'], ['flows', inc, '本月收入', 'income'],
+      ['flows', inc, '本月收入', 'income'],
       ['flows', exp, '本月支出', 'expense'], ['flows', inc-exp, '本月结余', 'balance'],
       ['subs', fixedMonthly, '固定支出/月', 'fixed']
     ].map(([target,value,label,tone]) => `<button class="money-kpi tone-${tone}" data-goto="money" data-tab-target="${target}"><b class="money-dual">${dualMoney(value)}</b><span>${label}</span><i>›</i></button>`).join('');
@@ -1310,7 +1309,7 @@ const App = (function () {
     const trendHtml=`<div class="money-trend"><svg viewBox="-2 0 104 50" preserveAspectRatio="none"><line x1="0" y1="${(44-(0-lo)/range*36).toFixed(1)}" x2="100" y2="${(44-(0-lo)/range*36).toFixed(1)}" class="zero"/><polyline points="${points}"/>${dots}</svg><div>${trend.map(r=>`<span>${r.label}<b>${r.has?(r.value>=0?'+':'')+bs+compactMoney(r.value):'无数据'}</b></span>`).join('')}</div></div>`;
 
     const native=`<div class="money-native"><span>原币收入 <b>${esc(nativeMoney(month.filter(r=>r.direction==='收入')))}</b></span><span>原币支出 <b>${esc(nativeMoney(month.filter(r=>r.direction==='支出')))}</b></span><span>原币资产 <b>${esc(nativeMoney(assets))}</b></span></div>`;
-    return `<div class="money-dashboard"><div class="money-kpis">${cards}</div>${native}
+    return `<div class="money-dashboard"><div class="money-overview-top">${assetSummary}<div class="money-kpis">${cards}</div></div>${native}
       <section><h3>资产构成 <small>按类型</small></h3>${assetHtml}</section>
       <section><h3>本月支出去向</h3>${expenseHtml}</section>
       <section><h3>预算状态 <small>月度真实对账</small></h3>${budgetHtml}</section>
@@ -1400,28 +1399,24 @@ const App = (function () {
    * ============================================================ */
   function renderJikuiTodos(tab) {
     const todos = Store.getList(tab);
-    const total = todos.length;
-    const done = todos.filter(r => r.status === '完成').length;
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-work"><div class="stat-value">${total}</div><div class="stat-label">待办总数</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${done}</div><div class="stat-label">已完成</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${Math.round((total ? done / total : 0) * 100)}%</div><div class="stat-label">完成率</div></div>
-    </div>`;
+    const tk=todayKey(), active=todos.filter(r=>r.status!=='完成'), done=todos.filter(r=>r.status==='完成').length, overdue=active.filter(r=>r.due&&r.due<tk).length, today=active.filter(r=>r.due===tk).length, weekEnd=dateKey(new Date(Date.now()+7*86400000)), week=active.filter(r=>r.due&&r.due>tk&&r.due<=weekEnd).length, pct=todos.length?Math.round(done/todos.length*100):0;
+    const stats = `<section class="work-week-summary"><div><small>本周任务</small><strong>还有 ${active.length} 项</strong><div class="work-filter-pills"><span class="danger">逾期 ${overdue}</span><span class="today">今天 ${today}</span><span>本周 ${week}</span><span>全部 ${todos.length}</span></div></div><div class="work-ring" style="--pct:${pct*3.6}deg"><b>${pct}%</b><small>完成率</small></div></section>`;
     if (!todos.length) return stats + `<div class="empty-state"><div class="empty-state-icon">🌱</div><div class="empty-state-text">还没有待办，点击 + 添加</div></div>`;
-    const items = todos.map(r => `<div class="todo-item">
+    const sorted=todos.slice().sort((a,b)=>(a.status==='完成')-(b.status==='完成')||(a.due||'9999').localeCompare(b.due||'9999'));
+    const items = sorted.map(r => `<div class="todo-item ${r.due&&r.due<tk&&r.status!=='完成'?'is-overdue':''}">
       <input type="checkbox" class="todo-check" data-toggle="${r._id}" data-key="status" data-on="完成" data-off="待办" ${r.status === '完成' ? 'checked' : ''}>
       <div class="todo-main">
         <div class="todo-title" style="${r.status === '完成' ? 'text-decoration:line-through;opacity:.55;' : ''}">${esc(r.item)}</div>
-        <div class="todo-meta">${r.due ? '截止 ' + r.due : ''} ${r.priority ? '· ' + r.priority : ''}</div>
+        <div class="todo-meta"><span class="priority-${esc(r.priority||'中')}">${esc(r.priority||'中')}优先级</span>${r.due ? `<span>${r.due<tk&&r.status!=='完成'?'已逾期':'截止'} ${r.due}</span>` : '<span>无截止日</span>'}</div>
       </div>
       <button class="shop-item-del" data-edit="${r._id}">✎</button>
       <button class="shop-item-del" data-del="${r._id}">×</button>
     </div>`).join('');
     return stats + `<div class="todo-list">${items}</div>`;
   }
-  function renderJikuiBoard(){ const list=Store.getList('todos'), states=['待办','进行','完成']; return `<div class="kanban">${states.map((s,i)=>`<section><h3>${s}<small>${list.filter(r=>r.status===s).length}</small></h3>${list.filter(r=>r.status===s).map(r=>`<div class="kanban-card"><b>${esc(r.item)}</b><small>${esc(r.due||'无截止日')} · ${esc(r.priority||'中')}</small><div>${i?`<button data-board-move="${r._id}" data-status="${states[i-1]}">←</button>`:''}${i<2?`<button data-board-move="${r._id}" data-status="${states[i+1]}">→</button>`:''}</div></div>`).join('')||'<div class="empty-hint">暂无</div>'}</section>`).join('')}</div>`; }
-  function bindJikuiBoard(){ document.querySelectorAll('[data-board-move]').forEach(b=>b.onclick=()=>{const status=b.dataset.status;Store.updateRecord('todos',b.dataset.boardMove,{status,completedDate:status==='完成'?todayKey():''});renderContent();}); }
-  function renderJikuiAnalyze(){ const list=Store.getList('todos'), tk=todayKey(), overdue=list.filter(r=>r.due&&r.due<tk&&r.status!=='完成'), completed=list.filter(r=>r.status==='完成'); const trend=[]; for(let i=5;i>=0;i--){const d=new Date();d.setMonth(d.getMonth()-i);const ym=dateKey(d).slice(0,7);trend.push(completed.filter(r=>(r.completedDate||'').startsWith(ym)).length);} return `<div class="stat-row"><div class="stat-card group-work"><div class="stat-value">${overdue.length}</div><div class="stat-label">逾期</div></div><div class="stat-card group-work"><div class="stat-value">${completed.length}</div><div class="stat-label">已完成</div></div></div>${previewHeat(completed,'completedDate','完成热力')}${miniLine(trend)}`; }
+  function renderJikuiBoard(){ const list=Store.getList('todos'), states=['待办','进行','完成']; return `<div class="kanban-switch">${states.map((s,i)=>`<button data-board-view="${s}" class="${i===0?'active':''}">${s} <b>${list.filter(r=>r.status===s).length}</b></button>`).join('')}</div><div class="kanban-hint">左右切换状态 · 卡片可快速流转</div><div class="kanban">${states.map((s,i)=>`<section data-board-column="${s}" class="${i===0?'active':''}"><h3>${s}<small>${list.filter(r=>r.status===s).length}</small></h3>${list.filter(r=>r.status===s).map(r=>`<div class="kanban-card priority-${esc(r.priority||'中')}"><b>${esc(r.item)}</b><small><span>${esc(r.priority||'中')}优先级</span><span>${esc(r.due||'无截止日')}</span></small><div>${i?`<button data-board-move="${r._id}" data-status="${states[i-1]}">← ${states[i-1]}</button>`:''}${i<2?`<button data-board-move="${r._id}" data-status="${states[i+1]}">${states[i+1]} →</button>`:''}</div></div>`).join('')||'<div class="empty-hint">这个状态暂无任务</div>'}</section>`).join('')}</div>`; }
+  function bindJikuiBoard(){ document.querySelectorAll('[data-board-view]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-board-view]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('[data-board-column]').forEach(x=>x.classList.toggle('active',x.dataset.boardColumn===b.dataset.boardView));});document.querySelectorAll('[data-board-move]').forEach(b=>b.onclick=()=>{const status=b.dataset.status;Store.updateRecord('todos',b.dataset.boardMove,{status,completedDate:status==='完成'?todayKey():''});renderContent();}); }
+  function renderJikuiAnalyze(){ const list=Store.getList('todos'), tk=todayKey(), overdue=list.filter(r=>r.due&&r.due<tk&&r.status!=='完成'), completed=list.filter(r=>r.status==='完成'), recentStart=dateKey(new Date(Date.now()-6*86400000)), recent=completed.filter(r=>(r.completedDate||'')>=recentStart), activeDays=new Set(recent.map(r=>r.completedDate)).size, dueDone=completed.filter(r=>r.due&&r.completedDate), onTime=dueDone.length?Math.round(dueDone.filter(r=>r.completedDate<=r.due).length/dueDone.length*100):0, health=overdue.length===0?'良好':overdue.length<=2?'需留意':'待调整'; const trend=[]; for(let i=6;i>=0;i--){const d=new Date(Date.now()-i*86400000),key=dateKey(d);trend.push(completed.filter(r=>r.completedDate===key).length);} const insight=list.length?`本周有 ${activeDays} 天完成任务`:'积累一些任务记录后，这里会生成趋势分析。'; return `<section class="work-insight"><div><small>本周工作简报</small><strong>完成 ${recent.length} 项</strong><em>${insight}</em></div><span class="health-${health==='良好'?'good':'warn'}">任务健康度<b>${health}</b></span><div class="work-health-metrics"><span><b>${onTime}%</b>按时完成</span><span class="danger"><b>${overdue.length}</b>逾期</span><span><b>${activeDays} 天</b>持续推进</span></div></section>${list.length?`<section class="analysis-panel"><h3>近 7 天完成趋势</h3>${miniLine(trend)}</section><section class="analysis-panel"><h3>工作热力图 <small>${insight}</small></h3>${previewHeat(completed,'completedDate','')}</section>`:''}`; }
 
   /* ============================================================
    * 经期设置（settings 型 Tab）

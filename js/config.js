@@ -110,12 +110,14 @@ const MODULES = [
       },
       { id: 'analyze', name: '统计分析', type: 'list', collection: 'todos', special: 'jikuiAnalyze', fields: [] },
       {
-        id: 'docs', name: '文档收集', type: 'list',
+        id: 'docs', name: '文档索引', type: 'list',
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
-          { key: 'type', label: '类型', type: 'select', options: ['执照', '章程', '税务', '合同', '发票', '记账'], def: '合同' },
-          { key: 'date', label: '日期', type: 'date' },
-          { key: 'filelink', label: '文件链接/路径', type: 'text' },
+          { key: 'type', label: '类型', type: 'selectOther', options: ['执照', '章程', '税务', '合同', '发票', '记账', '报告', '资料'], def: '合同' },
+          { key: 'status', label: '状态', type: 'select', options: ['待阅读', '待处理', '已归档'], def: '待处理' },
+          { key: 'date', label: '收集日期', type: 'date' },
+          { key: 'reviewDate', label: '复查日期', type: 'date' },
+          { key: 'filelink', label: '云盘链接/本机路径', type: 'text', ph: '只保存索引，不上传 PDF 文件' },
           { key: 'note', label: '备注', type: 'textarea' },
         ],
       },
@@ -379,6 +381,7 @@ const MODULES = [
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'type', label: '类型', type: 'selectOther', options: ['现金', '储蓄', '投资', '其他'], def: '储蓄' },
+          { key: 'owner', label: '资产归属', type: 'select', options: ['股市投资', '德国账户', '副业资金', '其他资产'], def: '德国账户' },
           { key: 'amount', label: '金额', type: 'number', required: true },
           { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
           { key: 'note', label: '备注', type: 'text' },
