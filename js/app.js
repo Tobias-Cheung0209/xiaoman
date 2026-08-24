@@ -4,6 +4,9 @@
 
 const App = (function () {
   const state = { module: 'home', tab: null };
+  let globalCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let globalCalendarDate = '';
+  let globalCalendarFilter = 'all';
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -349,6 +352,7 @@ const App = (function () {
       'life:events': renderEventsCard,
       'life:homeThings': renderHomeThings,
       'life:people': renderPeople,
+      'calendar:overview': renderGlobalCalendar,
       'study:today': renderStudyToday,
       'study:history': renderStudyHistory,
       'travel:overview': renderTravelOverview,
@@ -370,6 +374,9 @@ const App = (function () {
       'toolbox:youzi': renderYouzi,
       'invest:market': renderInvestMarket,
       'invest:logs': renderStockLog,
+      'invest:overview': renderInvestOverview,
+      'invest:holdings': renderInvestHoldings,
+      'invest:checks': renderInvestChecks,
       'money:budget': renderMoneyBudget,
     };
     return map[modId + ':' + tabId] || null;
@@ -425,13 +432,19 @@ const App = (function () {
     };
     // 特殊模块的内置绑定
     if (modId === 'life' && tab.id === 'homeThings') bindHomeThings(tab);
+    else if (modId === 'calendar' && tab.id === 'overview') bindGlobalCalendar();
     else if (modId === 'life' && tab.id === 'items') bindShopping(tab);
     else if (modId === 'life' && tab.id === 'people') bindPeople(tab);
     else if (modId === 'toolbox' && tab.id === 'youzi') bindYouzi(tab);
     else if (modId === 'discipline' && tab.id === 'plans') bindPlans(tab);
     else if (modId === 'discipline' && tab.id === 'habits') bindHabits(tab);
+    else if (modId === 'rigong' && tab.id === 'overview') {
+      const reflect=document.getElementById('rigong-reflect'), diaryTab=MODULE_MAP.rigong.tabs.find(t=>t.id==='diary');
+      if(reflect)reflect.onclick=()=>openForm(diaryTab,null,{date:todayKey()});
+    }
     else if (modId === 'invest' && tab.id === 'market') bindInvestMarket();
     else if (modId === 'invest' && tab.id === 'logs') bindStockLog(tab);
+    else if (modId === 'invest' && tab.id === 'checks') bindInvestChecks(tab);
     else if (modId === 'jikui' && tab.id === 'board') bindJikuiBoard();
     else if (modId === 'travel' && tab.id === 'overview') bindTravelMap();
     const funRandom=document.getElementById('fun-random'); if(funRandom)funRandom.onclick=()=>{const want=Store.getList('funItems').filter(r=>r.status==='想看'),el=document.getElementById('fun-random-result');if(want.length&&el)el.textContent='🎯 今天看：'+want[Math.floor(Math.random()*want.length)].name;};
@@ -767,7 +780,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=34',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=34',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=35',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=35',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -906,7 +919,79 @@ const App = (function () {
     return stats + recommend + list;
   }
 
-  /* 投资：行情是可选增强，日志始终离线可用。 */
+  /* ============================================================
+   * 全局时间事件：只投影各模块原数据，不另存一份日历记录。
+   * ============================================================ */
+  const CAL_CATS = {
+    plan:['计划','📋'], work:['工作','🏢'], study:['学习','📚'], habit:['自律','🏃'],
+    life:['生活','💝'], home:['居家','🔧'], money:['账单','💳'], invest:['投资','📈'],
+    travel:['旅行','✈️'], health:['健康','🌸'], file:['文件','🗂️'], review:['回望','📖']
+  };
+  function pushTimeEvent(out, date, title, category, sourceModule, sourceTab, sourceCollection, sourceId, extra) {
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    out.push(Object.assign({ date, title, category, sourceModule, sourceTab, sourceCollection, sourceId, status:'待处理' }, extra || {}));
+  }
+  function nextCycleDate(start, cycle, from) {
+    if (!start || !cycle) return '';
+    const base=new Date(start+'T00:00:00'), target=new Date((from||todayKey())+'T00:00:00');
+    if (isNaN(base)) return '';
+    while(base<target) base.setDate(base.getDate()+cycle);
+    return dateKey(base);
+  }
+  function collectTimeEvents(fromKey, toKey) {
+    const out=[], from=fromKey||'0000-01-01', to=toKey||'9999-12-31', inRange=d=>d&&d>=from&&d<=to;
+    const add=(d,...args)=>{ if(inRange(d)) pushTimeEvent(out,d,...args); };
+    const plans=Store.getList('plans');
+    for(let cursor=new Date(from+'T00:00:00'), end=new Date(to+'T00:00:00');cursor<=end;cursor.setDate(cursor.getDate()+1)){
+      const d=dateKey(cursor); plans.filter(r=>r.status!=='完成'&&r.date&&planOccurs(r,d)).forEach(r=>add(d,r.title,'plan','discipline','plans','plans',r._id,{time:r.time||'',priority:r.priority||'中'}));
+    }
+    Store.getList('todos').filter(r=>r.status!=='完成').forEach(r=>add(r.due,r.item,'work','jikui','todos','todos',r._id,{priority:r.priority||'中'}));
+    Store.getList('studyTasks').filter(r=>r.status!=='已完成').forEach(r=>add(r.date,r.goal||r.topic||'学习','study','study','today','studyTasks',r._id));
+    if(todayKey()>=from&&todayKey()<=to){
+      const recent=dateKey(new Date(Date.now()-6*86400000)),habits=Array.from(new Set(Store.getList('habitLogs').filter(r=>r.date>=recent).map(r=>r.habit)));
+      habits.filter(h=>!Store.getList('habitLogs').some(r=>r.habit===h&&r.date===todayKey())).forEach(h=>add(todayKey(),h,'habit','discipline','habits','habitLogs',null));
+      if(Store.getList('daily').length&&!Store.getList('daily').some(r=>r.date===todayKey()))add(todayKey(),'今日运动','habit','discipline','fitDaily','daily',null);
+    }
+    Store.getList('events').forEach(r=>{let d=r.date;if(r.repeatCycle==='每年'&&d){const md=d.slice(5);d=`${from.slice(0,4)}-${md}`;if(d<from)d=`${String(Number(from.slice(0,4))+1)}-${md}`;}add(d,r.name,'life','life','events','events',r._id,{important:true});});
+    Store.getList('homeCleanings').filter(r=>r.enabled!==false).forEach(r=>add(maintenanceDue(r),`${r.name} · ${r.task||'设备养护'}`,'home','life','homeThings','homeCleanings',r._id));
+    Store.getList('homeStocks').filter(r=>r.enabled!==false).forEach(r=>add(stockDue(r),`检查 ${r.name} 存量`,'home','life','homeThings','homeStocks',r._id));
+    Store.getList('homeBills').filter(r=>r.enabled!==false).forEach(r=>add(r.nextDate||r.dueDate,`${r.name}待入账`,'money','life','homeThings','homeBills',r._id));
+    Store.getList('moneySubs').forEach(r=>add(r.nextDate,r.name,'money','money','subs','moneySubs',r._id));
+    Store.getList('investHoldings').filter(r=>r.status!=='已清仓').forEach(r=>add(r.reviewDate,`复核 ${r.name} 投资假设`,'invest','invest','holdings','investHoldings',r._id,{priority:'高'}));
+    Store.getList('investChecks').filter(r=>r.status==='待检查'||!r.status).forEach(r=>add(r.date,r.title,'invest','invest','checks','investChecks',r._id,{priority:'高'}));
+    Store.getList('files').forEach(r=>add(r.expire,`${r.name}到期`,'file','files','files','files',r._id,{important:true}));
+    Store.getList('destinations').forEach(r=>add(r.goDate,`${r.city}出行`,'travel','travel','destinations','destinations',r._id,{important:true}));
+    const ps=Store.getSetting('periodSettings',{}), cycleDate=nextCycleDate(ps.cycleStart,parseInt(ps.cycleLen)||28,from);
+    if(ps.remind&&cycleDate) add(cycleDate,'预计经期开始','health','toolbox','youzi','',null,{predicted:true});
+    const hour=new Date().getHours(); if(todayKey()>=from&&todayKey()<=to&&hour>=20&&!Store.getList('rigongLogs').some(r=>r.date===todayKey())) add(todayKey(),'写下今日回望','review','rigong','overview','rigongLogs',null);
+    return out.sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  }
+  function renderGlobalCalendar() {
+    const y=globalCalendarMonth.getFullYear(),m=globalCalendarMonth.getMonth(),first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),end=new Date(start);end.setDate(end.getDate()+41);
+    const from=dateKey(start),to=dateKey(end), all=collectTimeEvents(from,to), filtered=globalCalendarFilter==='all'?all:all.filter(e=>e.category===globalCalendarFilter);
+    if(!globalCalendarDate||globalCalendarDate<from||globalCalendarDate>to) globalCalendarDate=todayKey()>=from&&todayKey()<=to?todayKey():`${y}-${String(m+1).padStart(2,'0')}-01`;
+    const byDate={};filtered.forEach(e=>(byDate[e.date]||(byDate[e.date]=[])).push(e));
+    const weekdays=['日','一','二','三','四','五','六'].map(x=>`<span>${x}</span>`).join('');
+    const cells=Array.from({length:42},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);const key=dateKey(d),events=byDate[key]||[],outside=d.getMonth()!==m;return `<button class="global-cal-day ${outside?'outside':''} ${key===globalCalendarDate?'selected':''} ${key===todayKey()?'today':''}" data-cal-date="${key}"><b>${d.getDate()}</b><span>${events.slice(0,3).map(e=>`<i class="cat-${e.category}"></i>`).join('')}</span>${events.length?`<small>${events.length}项</small>`:''}</button>`;}).join('');
+    const dayEvents=(byDate[globalCalendarDate]||[]).map(e=>{const cat=CAL_CATS[e.category]||['事项','•'];return `<div class="global-agenda-row"><i class="cat-${e.category}">${cat[1]}</i><button data-event-open="${esc(e.sourceModule||'')}" data-event-tab="${esc(e.sourceTab||'')}"><b>${esc(e.title)}</b><small>${esc(e.time||cat[0])}${e.predicted?' · 预计':''}</small></button>${e.sourceCollection==='plans'?`<button class="agenda-done" data-event-done="${e.sourceId}">✓</button>`:''}</div>`;}).join('')||'<div class="empty-hint">这一天没有安排</div>';
+    const filters=['all',...Object.keys(CAL_CATS)].map(k=>`<button data-cal-filter="${k}" class="${globalCalendarFilter===k?'active':''}">${k==='all'?'全部':CAL_CATS[k][0]}</button>`).join('');
+    return `<div class="global-calendar"><div class="calendar-summary"><div><small>📅 时间中枢</small><strong>本月 ${all.filter(e=>e.date.startsWith(`${y}-${String(m+1).padStart(2,'0')}`)).length} 项安排</strong></div><button id="calendar-today">今天</button></div><div class="calendar-filters">${filters}</div><div class="global-calendar-layout"><section class="global-calendar-card"><header><button id="calendar-prev">‹</button><h3>${y}年${m+1}月</h3><button id="calendar-next">›</button></header><div class="global-weekdays">${weekdays}</div><div class="global-cal-grid">${cells}</div></section><section class="global-agenda"><h3>${globalCalendarDate.slice(5).replace('-','月')}日 · ${dayEvents?((byDate[globalCalendarDate]||[]).length+'项'):''}</h3>${dayEvents}</section></div></div>`;
+  }
+  function bindGlobalCalendar(){
+    const shift=n=>{globalCalendarMonth=new Date(globalCalendarMonth.getFullYear(),globalCalendarMonth.getMonth()+n,1);globalCalendarDate='';renderContent();};
+    const p=document.getElementById('calendar-prev'),n=document.getElementById('calendar-next'),t=document.getElementById('calendar-today');if(p)p.onclick=()=>shift(-1);if(n)n.onclick=()=>shift(1);if(t)t.onclick=()=>{const d=new Date();globalCalendarMonth=new Date(d.getFullYear(),d.getMonth(),1);globalCalendarDate=todayKey();renderContent();};
+    document.querySelectorAll('[data-cal-date]').forEach(b=>b.onclick=()=>{globalCalendarDate=b.dataset.calDate;renderContent();});
+    document.querySelectorAll('[data-cal-filter]').forEach(b=>b.onclick=()=>{globalCalendarFilter=b.dataset.calFilter;renderContent();});
+    document.querySelectorAll('[data-event-open]').forEach(b=>b.onclick=()=>{if(!b.dataset.eventOpen)return;selectModule(b.dataset.eventOpen);if(b.dataset.eventTab)selectTab(b.dataset.eventTab);});
+    document.querySelectorAll('[data-event-done]').forEach(b=>b.onclick=()=>{Store.updateRecord('plans',b.dataset.eventDone,{status:'完成'});renderContent();});
+  }
+
+  /* 投资：以梳理、计划与提醒为主；行情只是可选增强。 */
+  function investTotals(){const list=Store.getList('investHoldings').filter(r=>r.status!=='已清仓'),rows=list.map(r=>Object.assign({},r,{positionCost:(+r.quantity||0)*(+r.cost||0),positionValue:(+r.quantity||0)*(+r.price||0)})),cost=rows.reduce((s,r)=>s+r.positionCost,0),value=rows.reduce((s,r)=>s+r.positionValue,0);return{list:rows,cost,value,pnl:value-cost};}
+  function renderInvestOverview(){const x=investTotals(),tk=todayKey(),checks=Store.getList('investChecks').filter(r=>(r.status||'待检查')==='待检查'),due=checks.filter(r=>r.date<=tk).length,reviews=x.list.filter(r=>r.reviewDate&&r.reviewDate<=tk).length;return `<div class="invest-dashboard"><section class="compact-summary"><div><small>组合概况</small><strong>${x.list.length?`${x.list.length}项持仓 · ${x.pnl>=0?'+':''}${x.pnl.toFixed(0)} 浮动盈亏`:'还没有持仓记录'}</strong></div><div class="compact-metrics"><span>成本 <b>${x.cost.toFixed(0)}</b></span><span>市值 <b>${x.value.toFixed(0)}</b></span><span class="${due+reviews?'warn':''}">待处理 <b>${due+reviews}</b></span></div></section><section class="insight-card"><h3>今天需要关注</h3>${due+reviews?`<p>${due} 项检查到期，${reviews} 项投资假设待复核。</p><button data-goto="invest" data-tab-target="checks">查看待检查</button>`:'<p>当前没有到期事项。小满只负责整理和提醒，研究由你自己完成。</p>'}</section>${x.list.length?`<section class="invest-weight-list"><h3>持仓概览</h3>${x.list.map(r=>{const w=x.value?r.positionValue/x.value*100:0,pnl=r.positionValue-r.positionCost;return `<button data-goto="invest" data-tab-target="holdings"><span>${esc(r.name)}<small>${esc(r.role||'观察')}</small></span><i><b>${w.toFixed(1)}%</b><small class="${pnl>=0?'up':'down'}">${pnl>=0?'+':''}${pnl.toFixed(0)}</small></i></button>`;}).join('')}</section>`:''}</div>`;}
+  function renderInvestHoldings(tab){const x=investTotals();if(!x.list.length)return '<div class="empty-state"><div class="empty-state-icon">📈</div><div class="empty-state-text">先添加一项持仓或观察标的</div></div>';return x.list.map(r=>{const pnl=r.positionValue-r.positionCost,pct=r.positionCost?pnl/r.positionCost*100:0,risk=r.riskPrice&&r.price?((r.price-r.riskPrice)/r.riskPrice*100):null;return `<div class="app-card invest-holding"><div class="app-card-head"><span class="app-card-title">${esc(r.name)} <small>${esc(r.symbol||'')}</small></span>${cardOpsMenu(r._id)}</div><div class="holding-metrics"><span>市值<b>${r.positionValue.toFixed(0)}</b></span><span>盈亏<b class="${pnl>=0?'up':'down'}">${pnl>=0?'+':''}${pnl.toFixed(0)} (${pct.toFixed(1)}%)</b></span><span>风险距离<b>${risk==null?'未设置':risk.toFixed(1)+'%'}</b></span></div>${r.thesis?`<p><b>持有理由：</b>${esc(r.thesis)}</p>`:''}${r.risks?`<p><b>风险/证伪：</b>${esc(r.risks)}</p>`:''}${r.reviewDate?`<p class="record-meta">下次复核：${esc(r.reviewDate)}</p>`:''}</div>`;}).join('');}
+  function renderInvestChecks(tab){const list=Store.getList(tab).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));if(!list.length)return '<div class="empty-state"><div class="empty-state-icon">🔎</div><div class="empty-state-text">添加下一次要检查的进展、财报或判断</div></div>';return list.map(r=>`<div class="app-card invest-check ${r.status==='已完成'?'done':''}"><div class="app-card-head"><span class="app-card-title">${esc(r.title)}</span>${cardOpsMenu(r._id)}</div><div class="app-card-body"><p>${esc(r.symbol||'未关联标的')} · ${esc(r.date||'未定日期')} · ${esc(r.status||'待检查')}</p>${r.result?`<p>${esc(r.result)}</p>`:''}<div class="inline-actions">${r.status!=='已完成'?`<button data-check-done="${r._id}">完成</button><button data-check-week="${r._id}">下周再看</button>`:''}</div></div></div>`).join('');}
+  function bindInvestChecks(){document.querySelectorAll('[data-check-done]').forEach(b=>b.onclick=()=>{Store.updateRecord('investChecks',b.dataset.checkDone,{status:'已完成'});renderContent();});document.querySelectorAll('[data-check-week]').forEach(b=>b.onclick=()=>{const d=new Date();d.setDate(d.getDate()+7);Store.updateRecord('investChecks',b.dataset.checkWeek,{date:dateKey(d),status:'待检查'});renderContent();});}
   const MARKET_SYMBOLS = [
     ['^GSPC','标普500'],['^IXIC','纳斯达克'],['^HSI','恒生指数'],['^GDAXI','德国DAX'],['GC=F','黄金'],['CNY=X','USD/CNY'],['EURCNY=X','EUR/CNY'],['EURUSD=X','EUR/USD']
   ];
@@ -1104,49 +1189,21 @@ const App = (function () {
    * ============================================================ */
   function renderRigongOverview(tab) {
     const study = Store.getList({ collection: 'studyTasks' });
-    const habits = Store.getList({ collection: 'habitLogs' });
+    const work = Store.getList({ collection: 'todos' });
     const daily = Store.getList({ collection: 'daily' }).filter(r => r.done);
     const diary = Store.getList({ collection: 'rigongLogs' });
     const books = Store.getList({ collection: 'bookLogs' }), skincare = Store.getList({ collection:'skincare' });
-    // 聚合拱卒日期
-    const archDates = {};
-    [...study, ...habits, ...daily].forEach(r => { if (r.date) archDates[r.date] = (archDates[r.date] || 0) + 1; });
-    const allDates = Object.keys(archDates);
-    // Streak
-    const today = new Date(); const dayMs = 86400000;
-    let streak = 0;
-    for (let i = 0; i < 365; i++) {
-      const dt = new Date(today.getTime() - i * dayMs);
-      const key = dt.toISOString().slice(0, 10);
-      if (archDates[key]) streak++;
-      else if (i > 0) break;
-    }
-    // 年度进度
-    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / dayMs);
-    const yearPct = Math.round((allDates.length / dayOfYear) * 100);
-    const totalH = study.reduce((s, r) => s + (parseFloat(r.duration) || 0), 0);
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-work"><div class="stat-value">🔥 ${streak}</div><div class="stat-label">连续天数</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${allDates.length}</div><div class="stat-label">拱卒天数</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${yearPct}%</div><div class="stat-label">年度进度</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${Math.round(totalH * 10) / 10}h</div><div class="stat-label">学习时长</div></div>
-    </div>`;
-    const heatData = allDates.map(d => ({ date: d, value: archDates[d] }));
-    const heat = `<div class="habit-section">
-      <div class="habit-section-head"><span class="habit-section-title">📅 年度拱卒热力图</span><span class="habit-section-stat">${allDates.length} 天有进益</span></div>
-      ${heatmapHtml(heatData, 'value', '')}
-    </div>`;
-    // 名言墙（固定座右铭）
-    const motto = (typeof MOTTO !== 'undefined') ? MOTTO : '日拱一卒无有尽，功不唐捐终入海。';
-    const quoteWall = `<div class="app-card" style="text-align:center;background:var(--card-work);">
-      <div style="font-size:16px;font-weight:700;line-height:1.6;">"${esc(motto)}"</div>
-    </div>`;
-    // 今日一得预览
     const tk = todayKey();
-    const todayDiary = diary.filter(r => r.date === tk);
-    const diaryPreview = todayDiary.length ? `<div class="app-card"><div class="app-card-body"><p>📝 今日一得：${esc(todayDiary[0].note)}</p></div></div>` : '';
-    const signals=`<div class="signal-grid"><button data-goto="rigong" data-tab-target="books">📚 读书<b>${books.length}</b></button><button data-goto="study" data-tab-target="history">🎓 学习<b>${study.length}</b></button><button data-goto="discipline" data-tab-target="fitDaily">🏃 运动<b>${daily.length}</b></button><button data-goto="discipline" data-tab-target="skincare">🧴 护理<b>${skincare.length}</b></button></div>`;
-    return stats + signals + heat + quoteWall + diaryPreview;
+    const todayDiary = diary.find(r => r.date === tk), states=[
+      ['工作',work.some(r=>r.completedDate===tk||r.status==='进行'),'jikui','board'],
+      ['学习',study.some(r=>r.date===tk),'study','today'],
+      ['运动',daily.some(r=>r.date===tk),'discipline','fitDaily'],
+      ['护理',skincare.some(r=>r.date===tk),'discipline','skincare'],
+      ['读书',books.some(r=>r.date===tk),'study','books']
+    ],done=states.filter(x=>x[1]).length;
+    const status=states.map(x=>`<button data-goto="${x[2]}" data-tab-target="${x[3]}" class="${x[1]?'on':''}"><i>${x[1]?'●':'○'}</i><span>${x[0]}</span><small>${x[1]?'有记录':'未记录'}</small></button>`).join('');
+    const reflection=todayDiary?`<section class="reflection-card complete"><small>今天已经留下回望</small><p>${esc(todayDiary.note||'今天也认真生活过。')}</p><button data-goto="rigong" data-tab-target="diary">查看往日记录</button></section>`:`<section class="reflection-card"><small>用一分钟，为今天收个尾</small><h3>今天整体状态如何？</h3><p>工作学习是否努力、高效？有什么值得保持或调整？</p><button id="rigong-reflect">写下今日回望</button></section>`;
+    return `<section class="compact-summary rigong-summary"><div><small>今日一拱</small><strong>${done ? `${done} 项留下了记录` : '今天还没有留下记录'}</strong></div><span>${done}/5</span></section><div class="daily-signal-grid">${status}</div>${reflection}`;
   }
 
   /* ============================================================
@@ -1452,12 +1509,12 @@ const App = (function () {
       return { body: miniBars([{ label: '已打卡', value: visited }, { label: '待打卡', value: dest.length - visited }], dest.length), foot: `${dest.length} 个目的地` };
     }
     if (m.id === 'rigong') {
-      const study = Store.getList({ collection: 'studyTasks' });
-      const habits = Store.getList({ collection: 'habitLogs' });
-      const daily = Store.getList({ collection: 'daily' }).filter(r => r.done);
-      const archDates = [...study, ...habits, ...daily].filter(r => r.date).map(r => r.date);
-      if (!archDates.length) return { body: miniHeatmap([]), foot: '还没有拱卒记录' };
-      return { body: miniHeatmap(archDates.map(d => ({ date: d, value: 1 }))), foot: `${new Set(archDates).size} 天有进益` };
+      const done=Store.getList('rigongLogs').some(r=>r.date===tk);
+      return { body: `<div class="home-status-line"><b>${done?'已完成':'待回望'}</b><span>${done?'今天已经好好收尾':'今晚用一分钟回顾今天'}</span></div>`, foot: done?'慢慢积累，也很好':'20:00 后温和提醒' };
+    }
+    if (m.id === 'invest') {
+      const x=investTotals(), checks=Store.getList('investChecks').filter(r=>(r.status||'待检查')==='待检查'&&r.date<=tk).length, reviews=x.list.filter(r=>r.reviewDate&&r.reviewDate<=tk).length;
+      return {body:`<div class="home-status-line"><b>${checks+reviews} 项</b><span>${checks+reviews?'等待检查或复核':'当前没有到期事项'}</span></div>`,foot:x.list.length?`${x.list.length}项持仓/观察`:'轻量梳理投资计划'};
     }
     if (m.id === 'files') {
       const files = Store.getList({ collection: 'files' });
@@ -1510,7 +1567,7 @@ const App = (function () {
     const weather = Topbar.getWeatherText();
     const quote = Topbar.getQuoteHtml();
     const reminders = buildReminders();
-    const tiles = MODULES.filter(m => m.id !== 'home').map(m => {
+    const tileFor = m => {
       const w = homeWidget(m);
       return `<div class="module-tile group-${m.group}" data-goto="${m.id}">
         <div class="module-tile-icon">${m.icon}</div>
@@ -1519,7 +1576,11 @@ const App = (function () {
         <div class="module-tile-body">${w.body}</div>
         ${w.foot ? `<div class="module-tile-foot">${esc(w.foot)}</div>` : ''}
       </div>`;
-    }).join('');
+    };
+    const ids={daily:['discipline','jikui','study','money','life'],review:['rigong','invest','travel'],more:['fun','files','toolbox']};
+    const tiles=ids.daily.map(id=>tileFor(MODULE_MAP[id])).join(''),reviewTiles=ids.review.map(id=>tileFor(MODULE_MAP[id])).join(''),moreTiles=ids.more.map(id=>tileFor(MODULE_MAP[id])).join('');
+    const horizon=new Date();horizon.setDate(horizon.getDate()+7);const past=new Date();past.setFullYear(past.getFullYear()-1);const weekEvents=collectTimeEvents(todayKey(),dateKey(horizon)),overdue=collectTimeEvents(dateKey(past),todayKey()).filter(e=>e.date<todayKey()).length;
+    const calendarPreview=`<button class="home-calendar-card" data-goto="calendar"><span>📅</span><div><small>总览日历</small><b>${weekEvents.length?`未来7天有 ${weekEvents.length} 项安排`:'未来7天暂无安排'}</b><em>${overdue?`${overdue}项已逾期 · `:''}${weekEvents.slice(0,2).map(e=>e.title).join(' · ')||'从容安排接下来的日子'}</em></div><i>›</i></button>`;
     return `
       <div class="home-dashboard">
         <div class="hero-card">
@@ -1539,8 +1600,13 @@ const App = (function () {
         <div class="section-title">📌 今日提醒</div>
         <div class="reminder-card">${reminders}</div>
         ${renderHomeImportantEvents()}
-        <div class="section-title">📦 全部板块</div>
+        ${calendarPreview}
+        <div class="section-title">✨ 常用</div>
         <div class="module-grid">${tiles}</div>
+        <div class="section-title">🌙 回顾与规划</div>
+        <div class="module-grid module-grid-compact">${reviewTiles}</div>
+        <div class="section-title">••• 更多</div>
+        <div class="module-grid module-grid-more">${moreTiles}</div>
         <div class="home-actions">
           <button id="btn-export-home">导出备份</button>
           <button class="primary" id="btn-settings-home">设置</button>
@@ -1596,6 +1662,9 @@ const App = (function () {
     const ps=Store.getSetting('periodSettings',{});
     if(ps.remind&&ps.cycleStart){const phase=periodPhase(tk,ps),start=new Date(ps.cycleStart+'T00:00:00'),now=new Date(tk+'T00:00:00'),len=parseInt(ps.cycleLen)||28,diff=Math.floor((now-start)/86400000),inCycle=((diff%len)+len)%len,until=len-inCycle;const meta=phase==='经期'?`经期第 ${inCycle+1} 天`:phase==='排卵期'?'预计排卵期':phase==='易孕期'?'易孕期':`预计经期还有 ${until} 天`;if(phase!=='安全期'||until<=3)items.push({icon:'🌸',text:'柚子 · 周期状态',meta});}
     upcomingImportantEvents(10).filter(ev=>ev.days<=Math.max(7,parseInt(ev.r.remindDays)||0)).slice(0,3).forEach(ev=>items.push({icon:'💝',text:ev.r.name,meta:ev.days===0?'就是今天':ev.days===1?'明天':`还有${ev.days}天`}));
+    Store.getList('investHoldings').filter(r=>r.status!=='已清仓'&&r.reviewDate&&daysUntil(r.reviewDate)<=7).slice(0,3).forEach(r=>items.push({icon:'📈',text:`复核 ${r.name} 投资假设`,meta:dueLabel(r.reviewDate)}));
+    Store.getList('investChecks').filter(r=>(r.status||'待检查')==='待检查'&&r.date&&daysUntil(r.date)<=Math.max(0,parseInt(r.remindDays)||3)).slice(0,3).forEach(r=>items.push({icon:'🔎',text:r.title,meta:dueLabel(r.date)}));
+    if(new Date().getHours()>=20&&!Store.getList('rigongLogs').some(r=>r.date===tk))items.push({icon:'📖',text:'写下今日回望',meta:'为今天温柔收尾'});
     if (!items.length) return `<div class="reminder-empty">今天没有待办，享受当下吧～</div>`;
     return `<div class="reminder-list">` + items.map(it =>
       `<div class="reminder-item"><span>${esc(it.icon)}</span><span>${esc(it.text)}</span><small>${esc(it.meta)}</small></div>`

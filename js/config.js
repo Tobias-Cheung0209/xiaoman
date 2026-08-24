@@ -85,6 +85,14 @@ const MODULES = [
     desc: '今日总览',
   },
 
+  {
+    id: 'calendar', name: '总览日历', icon: '📅', group: 'work', render: 'tabs',
+    desc: '全部安排 · 一处看清',
+    tabs: [
+      { id: 'overview', name: '总览', type: 'list', special: 'globalCalendar', fields: [] },
+    ],
+  },
+
   /* ---- 积跬（工作·蓝，独立不并入） ---- */
   {
     id: 'jikui', name: '积跬', icon: '🌱', group: 'work', render: 'tabs',
@@ -129,6 +137,15 @@ const MODULES = [
           { key: 'duration', label: '时长(小时)', type: 'number', ph: '如 1.5 表示 1.5 小时' },
           { key: 'date', label: '日期', type: 'date' },
           { key: 'status', label: '状态', type: 'select', options: ['计划', '进行中', '已完成'], def: '计划' },
+        ],
+      },
+      {
+        id: 'books', name: '读书', type: 'list', collection: 'bookLogs',
+        fields: [
+          { key: 'book', label: '书名', type: 'text', required: true },
+          { key: 'date', label: '日期', type: 'date', required: true },
+          { key: 'progress', label: '阅读进度', type: 'text', ph: '如 120页 / 60%' },
+          { key: 'note', label: '读书心得', type: 'textarea', ph: '写下一点收获即可' },
         ],
       },
       {
@@ -340,27 +357,18 @@ const MODULES = [
   /* ---- 日拱一卒（自律·成长·蓝） ---- */
   {
     id: 'rigong', name: '日拱一卒', icon: '📖', group: 'work', render: 'tabs',
-    desc: '拱卒热力 · 今日一得',
+    desc: '每日回望 · 温柔收束',
     tabs: [
       {
-        id: 'overview', name: '进度', type: 'list', special: 'rigongOverview',
+        id: 'overview', name: '今日回望', type: 'list', special: 'rigongOverview',
         fields: [],
       },
       {
-        id: 'diary', name: '今日一得', type: 'list', collection: 'rigongLogs',
+        id: 'diary', name: '往日记录', type: 'list', collection: 'rigongLogs',
         fields: [
           { key: 'date', label: '日期', type: 'date', required: true },
-          { key: 'note', label: '今日一得', type: 'textarea', ph: '3-2-1 法 → ① 3 个收获 ② 2 个疑问 ③ 1 个行动' },
-          { key: 'source', label: '来源标记', type: 'text' },
-        ],
-      },
-      {
-        id: 'books', name: '读书', type: 'list', collection: 'bookLogs',
-        fields: [
-          { key: 'book', label: '书名', type: 'text', required: true },
-          { key: 'date', label: '日期', type: 'date', required: true },
-          { key: 'progress', label: '阅读进度', type: 'text', ph: '如 120页 / 60%' },
-          { key: 'note', label: '读书心得', type: 'textarea', ph: '写下一点收获即可' },
+          { key: 'note', label: '今日回望', type: 'textarea', ph: '今天整体状态如何？工作学习是否努力、高效？有什么值得保持或调整？' },
+          { key: 'tags', label: '状态标签', type: 'multicheck', options: ['努力', '高效', '有学习', '有锻炼', '饮食自律', '需要调整'] },
         ],
       },
     ],
@@ -443,9 +451,32 @@ const MODULES = [
   },
 
   {
-    id: 'invest', name: '投资', icon: '📈', group: 'work', render: 'tabs', desc: '全球行情 · 投资复盘',
+    id: 'invest', name: '投资', icon: '📈', group: 'work', render: 'tabs', desc: '持仓 · 检查 · 复盘',
     tabs: [
-      { id: 'market', name: '全球行情', type: 'list', special: 'investMarket', fields: [] },
+      { id: 'overview', name: '总览', type: 'list', special: 'investOverview', fields: [] },
+      { id: 'holdings', name: '持仓', type: 'list', collection: 'investHoldings', special: 'investHoldings', fields: [
+        { key: 'name', label: '名称', type: 'text', required: true },
+        { key: 'symbol', label: '代码', type: 'text', ph: '如 688981.SH / AAPL' },
+        { key: 'market', label: '市场', type: 'selectOther', options: ['A股', '港股', '美股', '欧洲', '其他'], def: 'A股' },
+        { key: 'quantity', label: '持仓数量', type: 'number' },
+        { key: 'cost', label: '成本价', type: 'number' },
+        { key: 'price', label: '当前价（手动）', type: 'number' },
+        { key: 'riskPrice', label: '风险价', type: 'number' },
+        { key: 'maxWeight', label: '仓位上限(%)', type: 'number' },
+        { key: 'role', label: '组合角色', type: 'select', options: ['核心', '卫星', '观察'], def: '观察' },
+        { key: 'thesis', label: '为什么持有', type: 'textarea' },
+        { key: 'risks', label: '主要风险 / 证伪条件', type: 'textarea' },
+        { key: 'reviewDate', label: '下次复核日期', type: 'date' },
+        { key: 'status', label: '状态', type: 'select', options: ['持有', '观察', '已清仓'], def: '观察' },
+      ] },
+      { id: 'checks', name: '待检查', type: 'list', collection: 'investChecks', special: 'investChecks', fields: [
+        { key: 'title', label: '检查事项', type: 'text', required: true },
+        { key: 'symbol', label: '关联标的', type: 'text' },
+        { key: 'date', label: '计划日期', type: 'date', required: true },
+        { key: 'remindDays', label: '提前提醒(天)', type: 'number', def: 3 },
+        { key: 'result', label: '检查结果', type: 'textarea' },
+        { key: 'status', label: '状态', type: 'select', options: ['待检查', '已完成', '已归档'], def: '待检查' },
+      ] },
       { id: 'logs', name: '投资日志', type: 'list', collection: 'stockLog', special: 'stockLog', fields: [
         { key: 'date', label: '日期', type: 'date', required: true },
         { key: 'type', label: '类型', type: 'select', options: ['复盘', '操作', '想法'], def: '复盘' },
@@ -453,6 +484,13 @@ const MODULES = [
         { key: 'content', label: '内容', type: 'textarea', required: true, ph: '记录判断、依据、风险和下一步（不强制模板）' },
         { key: 'photo', label: '截图', type: 'image' },
       ] },
+      { id: 'snapshots', name: '组合快照', type: 'list', collection: 'investSnapshots', fields: [
+        { key: 'date', label: '日期', type: 'date', required: true },
+        { key: 'value', label: '组合市值', type: 'number', required: true },
+        { key: 'cost', label: '组合成本', type: 'number' },
+        { key: 'note', label: '备注', type: 'text' },
+      ] },
+      { id: 'market', name: '全球行情', type: 'list', special: 'investMarket', fields: [] },
     ],
   },
 
