@@ -1191,10 +1191,11 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 .shop-simple-add button { border:0; border-radius:10px; background:var(--life); color:#fff; padding:8px 13px; cursor:pointer; }
 .shop-simple-meta { display:flex; flex-wrap:wrap; gap:8px 16px; padding:11px 4px; color:var(--text-3); font-size:12px; }
 .shop-simple-list,.shop-simple-completed { background:var(--surface); border-radius:16px; padding:5px 14px; box-shadow:var(--shadow-card); margin-bottom:12px; }
-.shop-simple-row { display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:9px; min-height:52px; border-bottom:1px solid rgba(220,230,245,.65); }
+.shop-simple-row { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto auto; align-items:center; gap:9px; min-height:52px; border-bottom:1px solid rgba(220,230,245,.65); }
 .shop-simple-row:last-child { border-bottom:0; }.shop-simple-row input { width:22px; height:22px; accent-color:var(--life-deep); cursor:pointer; }
 .shop-simple-main { display:flex; align-items:baseline; flex-wrap:wrap; gap:7px; min-width:0; padding:12px 0; border:0; background:none; text-align:left; cursor:pointer; }
 .shop-simple-main b { overflow:hidden; text-overflow:ellipsis; font-size:15px; font-weight:500; }.shop-simple-main small { color:var(--text-3); font-size:11px; }
+.shop-simple-main .shop-booked { color:#16a34a; text-decoration:none; }.shop-book-action { border:0; border-radius:9px; padding:6px 9px; background:rgba(126,200,255,.18); color:var(--work-deep); font-size:12px; font-weight:700; cursor:pointer; }.shop-book-note{display:grid;gap:4px;padding:11px 13px;margin-bottom:12px;border-radius:13px;background:var(--work-light);color:var(--text-2)}.shop-book-note b{color:var(--text)}.shop-book-note span{font-size:12px}
 .shop-simple-row.done .shop-simple-main { text-decoration:line-through; opacity:.52; }.shop-simple-row.cancelled { opacity:.42; }
 .shop-simple-more,.shop-simple-delete { border:0; background:none; color:var(--text-3); cursor:pointer; font-size:17px; padding:8px 3px; }.shop-simple-delete { color:var(--life-deep); }
 .shop-simple-completed summary { padding:12px 0; color:var(--text-2); cursor:pointer; font-size:13px; }.shop-simple-empty { padding:28px 10px; text-align:center; color:var(--text-3); font-size:13px; }

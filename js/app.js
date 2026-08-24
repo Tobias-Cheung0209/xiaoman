@@ -402,6 +402,7 @@ const App = (function () {
           if (key === 'done') rec[key] = b.checked;
           else if (b.tagName === 'BUTTON') rec[key] = rec[key] === on ? off : on;
           else rec[key] = b.checked ? on : off;
+          const shouldBook=(colKey.collection==='items'||tab.collection==='items')&&key==='status'&&rec.status==='已买'&&!shoppingFlowFor(rec);
           if ((colKey.collection === 'todos' || Store.keyOf(colKey) === 'todos') && key === 'status') rec.completedDate = rec.status === '完成' ? todayKey() : '';
           Store.updateRecord(colKey, rec._id, rec);
           // 心愿清单 ↔ 购物清单 双向联动：购物项标记已买 → 回写心愿状态
@@ -410,6 +411,7 @@ const App = (function () {
             if (wish && wish.status !== '已买') { wish.status = '已买'; Store.updateRecord({ collection: 'wishes' }, wish._id, wish); }
           }
           renderContent();
+          if(shouldBook)setTimeout(()=>openShoppingBooking(rec._id),0);
         }
       };
       if (b.tagName === 'BUTTON') b.onclick = handler;
@@ -507,12 +509,13 @@ const App = (function () {
     const pending = items.filter(r => (r.status || '未买') === '未买');
     const done = items.filter(r => r.status === '已买');
     const cancelledItems = items.filter(r => r.status === '已取消');
-    const row = it => `<div class="shop-simple-row ${it.status === '已买' ? 'done' : ''} ${it.status === '已取消' ? 'cancelled' : ''}">
+    const row = it => { const booked=shoppingFlowFor(it); return `<div class="shop-simple-row ${it.status === '已买' ? 'done' : ''} ${it.status === '已取消' ? 'cancelled' : ''}">
       <input type="checkbox" aria-label="${esc(it.name)}" data-toggle="${it._id}" data-key="status" data-on="已买" data-off="未买" ${it.status === '已买' ? 'checked' : ''}>
-      <button type="button" class="shop-simple-main" data-edit="${it._id}"><b>${esc(it.name)}</b>${it.qty && Number(it.qty)!==1 ? `<small>×${esc(it.qty)}</small>`:''}${it.price ? `<small>€${parseFloat(it.price).toFixed(2)}</small>`:''}</button>
+      <button type="button" class="shop-simple-main" data-edit="${it._id}"><b>${esc(it.name)}</b>${it.qty && Number(it.qty)!==1 ? `<small>×${esc(it.qty)}</small>`:''}${it.price ? `<small>€${parseFloat(it.price).toFixed(2)}</small>`:''}${booked?'<small class="shop-booked">已入账</small>':''}</button>
+      ${it.status==='已买'&&!booked?`<button type="button" class="shop-book-action" data-book-shop="${it._id}">记账</button>`:''}
       <button type="button" class="shop-simple-more" data-edit="${it._id}" aria-label="编辑 ${esc(it.name)}">···</button>
       <button type="button" class="shop-simple-delete" data-del="${it._id}" aria-label="删除 ${esc(it.name)}">×</button>
-    </div>`;
+    </div>`; };
     return `<div class="shop-simple">
       <form id="shop-quick-form" class="shop-simple-add"><span>＋</span><input id="shop-quick-input" autocomplete="off" placeholder="添加物品，回车保存" aria-label="添加购物物品"><button type="submit">添加</button></form>
       <div class="shop-simple-meta"><span>${pending.length} 项待买</span><span>已买 ${bought}/${total}${cancelled ? ` · 取消 ${cancelled}`:''}</span><span>已花 €${spent.toFixed(2)}${target ? ` / €${target}`:''}</span></div>
@@ -528,6 +531,39 @@ const App = (function () {
     if(!form||!input)return;
     const saveQuick=e=>{if(e)e.preventDefault();const name=input.value.trim();if(!name)return;Store.addRecord(tab,{name,cat:'其他',price:'',buyLink:'',priority:'想要',status:'未买',qty:1,note:''});input.value='';renderContent();};
     form.onsubmit=saveQuick;input.onkeydown=e=>{if(e.key==='Enter')saveQuick(e);};
+    document.querySelectorAll('[data-book-shop]').forEach(b=>b.onclick=()=>openShoppingBooking(b.dataset.bookShop));
+  }
+
+  function shoppingFlowFor(item) {
+    if (!item) return null;
+    return Store.getList('flows').find(f=>f.sourceType==='shoppingItem'&&f.sourceId===item._id) ||
+      (item.flowId ? Store.getList('flows').find(f=>f._id===item.flowId) : null);
+  }
+  function openShoppingBooking(itemId) {
+    const item=Store.getList('items').find(r=>r._id===itemId);
+    if(!item)return;
+    if(shoppingFlowFor(item)){alert('这件商品已经记入资金流水');return;}
+    const suggested=(parseFloat(item.price)||0)*(parseFloat(item.qty)||1);
+    const defaultCategory=item.cat==='食品'?'餐饮':['护肤','数码','家居','服饰'].includes(item.cat)?'购物':'日常开销';
+    openModal('购物完成 · 记入资金流水',`<form id="shop-book-form">
+      <div class="shop-book-note"><b>${esc(item.name)}</b><span>确认后会进入资金管理，并参与本月支出与预算统计。</span></div>
+      <div class="form-row"><label>实际总额<i>*</i></label><input id="shop-book-amount" type="number" step="any" min="0.01" required value="${suggested?suggested.toFixed(2):''}" placeholder="填写收银小票总额"></div>
+      <div class="form-row"><label>币种</label><select id="shop-book-currency">${MONEY_CURRENCIES.map(c=>`<option ${c==='€'?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-row"><label>流水分类</label><select id="shop-book-category">${MONEY_CATEGORIES.map(c=>`<option ${c===defaultCategory?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-row"><label>日期</label><input id="shop-book-date" type="date" required value="${todayKey()}"></div>
+      <div class="form-actions"><button type="button" class="btn-secondary" id="shop-book-later">暂不入账</button><button type="submit" class="btn-primary">确认入账</button></div>
+    </form>`);
+    document.getElementById('shop-book-later').onclick=closeModal;
+    document.getElementById('shop-book-form').onsubmit=e=>{
+      e.preventDefault();
+      if(shoppingFlowFor(item)){alert('这件商品已经记入资金流水');closeModal();renderContent();return;}
+      const amount=parseFloat(document.getElementById('shop-book-amount').value);
+      if(!Number.isFinite(amount)||amount<=0)return;
+      const currency=document.getElementById('shop-book-currency').value||'€',category=document.getElementById('shop-book-category').value||'购物',date=document.getElementById('shop-book-date').value||todayKey();
+      const flow=Store.addRecord('flows',{account:'',currency,direction:'支出',category,categoryDetail:item.cat||'',budgetStatus:'自动匹配',amount,date,note:`购物清单 · ${item.name}`,sourceType:'shoppingItem',sourceId:item._id});
+      Store.updateRecord('items',item._id,{flowId:flow._id,bookedAt:new Date().toISOString(),actualAmount:amount,actualCurrency:currency});
+      closeModal();renderContent();
+    };
   }
 
   /* ============================================================
@@ -780,7 +816,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=39',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=39',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=40',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=40',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;

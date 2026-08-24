@@ -166,10 +166,10 @@ const MODULES = [
   /* ---- 生活（生活·红） ---- */
   {
     id: 'life', name: '生活', icon: '🌸', group: 'life', render: 'tabs',
-    desc: '收支 · 购物 · 重要日子 · 居家 · 人物',
+    desc: '购物预算 · 清单 · 重要日子 · 居家 · 人物',
     tabs: [
       {
-        id: 'budget', name: '收支情况', type: 'budget', currency: '€',
+        id: 'budget', name: '购物预算', type: 'budget', currency: '€',
       },
       {
         id: 'items', name: '购物清单', type: 'list', collection: 'items', special: 'shopping',
