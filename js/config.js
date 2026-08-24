@@ -279,6 +279,16 @@ const MODULES = [
     ],
   },
 
+  /* ---- 灶间（轻食 · 菜谱 · 下厨记） ---- */
+  {
+    id: 'kitchen', name: '灶间', icon: '🍲', group: 'life', render: 'tabs',
+    desc: '轻食 · 菜谱 · 下厨记',
+    tabs: [
+      { id: 'light', name: '轻食减脂', type: 'list', special: 'kitchenLight', fields: [] },
+      { id: 'cooking', name: '人间烟火', type: 'list', special: 'kitchenCooking', fields: [] },
+    ],
+  },
+
   /* ---- 日程自律（自律·成长·蓝，合并运动/形象） ---- */
   {
     id: 'discipline', name: '日程自律', icon: '💪', group: 'work', render: 'tabs',
@@ -306,22 +316,6 @@ const MODULES = [
           { key: 'calories', label: '消耗(kcal)', type: 'number' },
           { key: 'done', label: '完成', type: 'checkbox' },
           { key: 'photo', label: '运动照', type: 'image' },
-        ],
-      },
-      {
-        id: 'fitDiet', name: '减脂饮食', type: 'list', collection: 'diet', special: 'fitDiet',
-        fields: [
-          { key: 'kind', label: '方案类型', type: 'select', options: ['固定减脂餐', '备选食谱'], def: '固定减脂餐' },
-          { key: 'name', label: '方案名称', type: 'text', required: true },
-          { key: 'meal', label: '餐次', type: 'select', options: ['早餐', '午餐', '晚餐', '加餐'], def: '早餐' },
-          { key: 'food', label: '食材/组合', type: 'textarea' },
-          { key: 'calories', label: '热量(kcal)', type: 'number' },
-          { key: 'protein', label: '蛋白质(g)', type: 'number' },
-          { key: 'minutes', label: '准备时间(分钟)', type: 'number' },
-          { key: 'tags', label: '标签', type: 'multicheck', options: ['高蛋白', '低脂', '快手', '适合带饭', '中餐', '西餐'] },
-          { key: 'link', label: '购买/参考链接', type: 'text' },
-          { key: 'photo', label: '照片', type: 'image' },
-          { key: 'note', label: '做法/备注', type: 'textarea' },
         ],
       },
       {

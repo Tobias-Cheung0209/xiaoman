@@ -381,9 +381,10 @@ const App = (function () {
       'discipline:plans': renderPlans,
       'discipline:habits': renderHabits,
       'discipline:fitDaily': renderFitnessDaily,
-      'discipline:fitDiet': renderFitDiet,
       'discipline:skincare': renderSkincare,
       'discipline:weight': renderWeightTab,
+      'kitchen:light': renderKitchen,
+      'kitchen:cooking': renderKitchen,
       'rigong:overview': renderRigongOverview,
       'money:overview': renderMoneyOverview,
       'money:assets': renderMoneyAccounts,
@@ -461,7 +462,7 @@ const App = (function () {
     else if (modId === 'toolbox' && tab.id === 'youzi') bindYouzi(tab);
     else if (modId === 'discipline' && tab.id === 'plans') bindPlans(tab);
     else if (modId === 'discipline' && tab.id === 'fitDaily') document.getElementById('fitness-add')?.addEventListener('click',()=>openForm(tab,null,{date:todayKey(),done:true}));
-    else if (modId === 'discipline' && tab.id === 'fitDiet') bindFitDiet(tab);
+    else if (modId === 'kitchen') bindKitchen(tab);
     else if (modId === 'study' && tab.id === 'today') bindLearningCycles(tab,'study');
     else if (modId === 'study' && tab.id === 'books') bindLearningCycles(tab,'book');
     else if (modId === 'rigong' && tab.id === 'overview') {
@@ -837,7 +838,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=51',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=51',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=52',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=52',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -1209,11 +1210,11 @@ const App = (function () {
    * 减脂饮食：固定方案为默认，想换口味时从备选食谱中抽取。
    * ============================================================ */
   let dietMode='fixed';
-  function renderFitDiet(tab){
+  function renderFitDiet(tab,showTabs=true){
     const all=Store.getList(tab),fixed=all.filter(r=>(r.kind||'固定减脂餐')==='固定减脂餐'),recipes=all.filter(r=>r.kind==='备选食谱'),todayLog=Store.getList('dietLogs').find(r=>r.date===todayKey());
-    const tabs=`<div class="diet-mode"><button data-diet-mode="fixed" class="${dietMode==='fixed'?'active':''}">固定减脂餐</button><button data-diet-mode="ideas" class="${dietMode==='ideas'?'active':''}">换换口味</button></div>`;
+    const tabs=showTabs?`<div class="diet-mode"><button data-diet-mode="fixed" class="${dietMode==='fixed'?'active':''}">固定减脂餐</button><button data-diet-mode="ideas" class="${dietMode==='ideas'?'active':''}">换换口味</button></div>`:'';
     if(dietMode==='ideas'){
-      const cards=recipes.length?recipes.map(r=>`<article class="diet-card recipe">${r.photo?`<img src="${esc(r.photo)}" alt="">`:'<i>🥗</i>'}<div><small>${esc(r.meal||'正餐')} · ${esc((r.tags||[]).join(' · ')||'备选食谱')}</small><h3>${esc(r.name||r.food||'未命名食谱')}</h3><p>${esc(r.food||'')} ${r.calories?`· ${r.calories} kcal`:''}${r.minutes?` · ${r.minutes} 分钟`:''}</p></div><span class="app-card-ops"><button data-diet-pick="${r._id}">就吃这个</button><button data-edit="${r._id}">编辑</button></span></article>`).join(''):'<div class="empty-state"><div class="empty-state-icon">🥗</div><div class="empty-state-text">点击 + 添加第一份备选食谱</div></div>';
+      const cards=recipes.length?recipes.map(r=>`<article class="diet-card recipe">${r.photo?`<img src="${esc(r.photo)}" alt="">`:'<i>🥗</i>'}<div><small>${esc(r.meal||'正餐')} · ${esc((r.tags||[]).join(' · ')||'备选食谱')}</small><h3>${esc(r.name||r.food||'未命名食谱')}</h3><p>${esc(r.food||'')} ${r.calories?`· ${r.calories} kcal`:''}</p></div><span class="app-card-ops"><button data-diet-pick="${r._id}">就吃这个</button><button data-edit="${r._id}">编辑</button></span></article>`).join(''):'<div class="empty-state"><div class="empty-state-icon">🥗</div><div class="empty-state-text">点击 + 添加第一份备选食谱</div></div>';
       return tabs+`<section class="diet-idea-head"><div><small>今天想换个口味？</small><strong id="diet-random-result">从自己的食谱库里选，不改变长期固定方案。</strong></div><button id="diet-random" ${recipes.length?'':'disabled'}>换一个</button></section><div class="diet-list">${cards}</div>`;
     }
     const grouped=['早餐','午餐','晚餐','加餐'].map(meal=>{const rows=fixed.filter(r=>(r.meal||'早餐')===meal);if(!rows.length)return'';return `<section class="diet-meal"><header><b>${meal}</b><small>${rows.length} 个固定组合</small></header>${rows.map(r=>`<article>${r.photo?`<img src="${esc(r.photo)}" alt="">`:'<i>🥩</i>'}<div><h3>${esc(r.name||r.food||'固定餐')}</h3><p>${esc(r.food||'')}${r.calories?` · ${r.calories} kcal`:''}${r.protein?` · 蛋白质 ${r.protein}g`:''}</p></div><span class="app-card-ops"><button data-edit="${r._id}">编辑</button></span></article>`).join('')}</section>`;}).join('');
@@ -1226,6 +1227,58 @@ const App = (function () {
     const random=document.getElementById('diet-random');if(random)random.onclick=()=>{const rows=Store.getList('diet').filter(r=>r.kind==='备选食谱'),pick=rows[Math.floor(Math.random()*rows.length)],el=document.getElementById('diet-random-result');if(pick&&el)el.textContent=`今日推荐：${pick.name||pick.food}`;};
     document.querySelectorAll('[data-diet-pick]').forEach(b=>b.onclick=()=>{const r=Store.getList('diet').find(x=>x._id===b.dataset.dietPick);if(r){Store.addRecord('dietLogs',{date:todayKey(),mode:'换换口味',recipeId:r._id,name:r.name||r.food,status:'已选择'});renderContent();}});
   }
+
+  /* ============================================================
+   * 灶间：轻食减脂 + 私人烹饪知识库
+   * ============================================================ */
+  const kitchenDietTab={id:'diet',name:'轻食方案',collection:'diet',fields:[{key:'kind',label:'方案类型',type:'select',options:['固定减脂餐','备选食谱'],def:'固定减脂餐'},{key:'name',label:'方案名称',type:'text',required:true},{key:'meal',label:'餐次',type:'select',options:['早餐','午餐','晚餐','加餐'],def:'早餐'},{key:'food',label:'食材/组合',type:'textarea'},{key:'calories',label:'热量(kcal)',type:'number'},{key:'protein',label:'蛋白质(g)',type:'number'},{key:'tags',label:'标签',type:'multicheck',options:['高蛋白','低脂','适合带饭','中餐','西餐']},{key:'link',label:'购买/参考链接',type:'text'},{key:'photo',label:'照片',type:'image'},{key:'note',label:'做法/备注',type:'textarea'}]};
+  const recipeTab={id:'recipes',name:'菜谱',collection:'recipes',fields:[{key:'name',label:'菜名',type:'text',required:true},{key:'sourceType',label:'来源类型',type:'select',options:['自创','改良','收藏'],def:'自创'},{key:'status',label:'状态',type:'select',options:['草稿','想做','做过','常做'],def:'草稿'},{key:'category',label:'分类',type:'selectOther',options:['家常菜','主食','汤','凉菜','烘焙','甜品','饮品'],def:'家常菜'},{key:'style',label:'菜系/风格',type:'text'},{key:'difficulty',label:'难度',type:'select',options:['简单','普通','挑战'],def:'普通'},{key:'servings',label:'适合人数',type:'number'},{key:'ingredients',label:'食材与用量（每行一种）',type:'textarea',required:true},{key:'steps',label:'制作步骤',type:'textarea'},{key:'seasoning',label:'调味比例',type:'textarea'},{key:'heatTips',label:'火候与关键节点',type:'textarea'},{key:'sourceLink',label:'来源链接',type:'text'},{key:'photo',label:'成品照片',type:'image'},{key:'tips',label:'私人技巧',type:'textarea'},{key:'tags',label:'标签',type:'multicheck',options:['下饭','宴客','周末','可带饭','德国可买到食材']}]};
+  const ideaTab={id:'recipeIdeas',name:'灵感',collection:'recipeIdeas',fields:[{key:'title',label:'灵感标题',type:'text',required:true},{key:'content',label:'灵感内容',type:'textarea'},{key:'questions',label:'待验证问题',type:'textarea'},{key:'status',label:'状态',type:'select',options:['灵感','试做中','已成菜','放弃'],def:'灵感'},{key:'photo',label:'图片',type:'image'},{key:'link',label:'参考链接',type:'text'}]};
+  const cookingLogTab={id:'cookingLogs',name:'下厨记录',collection:'cookingLogs',fields:[{key:'date',label:'日期',type:'date',required:true},{key:'recipeName',label:'关联菜谱',type:'text',required:true},{key:'rating',label:'评分（1-5）',type:'number'},{key:'taste',label:'味道状态',type:'selectOther',options:['偏淡','刚好','偏咸','偏甜','偏辣'],def:'刚好'},{key:'changes',label:'本次调整',type:'textarea'},{key:'nextChange',label:'下次改进',type:'textarea'},{key:'success',label:'是否成功',type:'checkbox',def:true},{key:'worthRepeating',label:'值得常做',type:'checkbox'},{key:'photo',label:'成品照片',type:'image'}]};
+  const kitchenNoteTab={id:'kitchenNotes',name:'厨房笔记',collection:'kitchenNotes',fields:[{key:'title',label:'标题',type:'text',required:true},{key:'category',label:'分类',type:'select',options:['食材处理','调味比例','火候经验','厨具经验','德国食材替代','失败复盘','其他'],def:'食材处理'},{key:'recipeName',label:'关联菜谱（可选）',type:'text'},{key:'content',label:'笔记',type:'textarea',required:true},{key:'photo',label:'图片',type:'image'}]};
+  const groceryTab={id:'groceryDrafts',name:'采购单',collection:'groceryDrafts',fields:[{key:'title',label:'采购单名称',type:'text',required:true},{key:'date',label:'日期',type:'date'},{key:'itemsText',label:'采购内容（每行一种）',type:'textarea',required:true},{key:'status',label:'状态',type:'select',options:['待采购','采购中','已完成'],def:'待采购'}]};
+  const versionTab={id:'recipeVersions',name:'菜谱版本',collection:'recipeVersions',fields:[{key:'version',label:'版本号',type:'text',required:true},{key:'changes',label:'本版调整',type:'textarea',required:true},{key:'ingredients',label:'本版食材（可选）',type:'textarea'},{key:'steps',label:'本版步骤（可选）',type:'textarea'},{key:'recommended',label:'设为推荐版本',type:'checkbox'}]};
+  let kitchenCookingView='recipes',kitchenLightView='fixed';
+  function kitchenSubnav(view,items,attr){return `<div class="kitchen-subnav">${items.map(([id,label])=>`<button data-${attr}="${id}" class="${view===id?'active':''}">${label}</button>`).join('')}</div>`;}
+  function renderKitchen(tab){
+    if(tab.id==='light'){
+      const nav=kitchenSubnav(kitchenLightView,[['fixed','今日轻食'],['ideas','换换口味'],['logs','执行记录']],'kitchen-light')+(kitchenLightView!=='logs'?'<button class="kitchen-light-add" data-kitchen-diet-add>＋ 添加轻食方案</button>':'');
+      if(kitchenLightView==='logs'){const logs=Store.getList('dietLogs').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));return nav+(logs.length?`<div class="kitchen-log-list">${logs.map(r=>`<article><i>🥗</i><div><b>${esc(r.date||'')}</b><small>${esc(r.mode||'轻食')} ${r.name?'· '+esc(r.name):''}</small></div><button data-kitchen-del="${r._id}" data-col="dietLogs">×</button></article>`).join('')}</div>`:'<div class="empty-state"><div class="empty-state-icon">🥗</div><div class="empty-state-text">还没有轻食执行记录</div></div>');}
+      dietMode=kitchenLightView;const status=kitchenLightView==='fixed'?'<div class="diet-status-actions"><span>今天不是固定方案？</span><button data-diet-status="自选减脂餐">自选减脂餐</button><button data-diet-status="正常饮食">正常饮食</button><button data-diet-status="外食">外食</button></div>':'';return nav+renderFitDiet(kitchenDietTab,false)+status;
+    }
+    const nav=kitchenSubnav(kitchenCookingView,[['recipes','菜谱库'],['ideas','灵感备忘'],['logs','下厨记录'],['notes','厨房笔记'],['grocery','采购单']],'kitchen-view');
+    return nav+renderKitchenCookingView();
+  }
+  function kitchenEmpty(icon,text){return `<div class="empty-state"><div class="empty-state-icon">${icon}</div><div class="empty-state-text">${text}</div></div>`;}
+  function renderKitchenCookingView(){
+    if(kitchenCookingView==='recipes'){
+      const rows=Store.getList('recipes'),head=`<div class="kitchen-view-head"><div><small>私人菜谱库</small><strong>${rows.length} 道菜 · 自创、改良与收藏</strong></div><button data-kitchen-add="recipe">＋ 新建菜谱</button></div>`;
+      if(!rows.length)return head+kitchenEmpty('🍳','还没有菜谱，先记下第一道自创菜');
+      const cards=rows.map(r=>{const logs=Store.getList('cookingLogs').filter(x=>x.recipeName===r.name),versions=Store.getList('recipeVersions').filter(x=>x.recipeId===r._id),photo=r.photo?`<img src="${esc(r.photo)}">`:'<i>🍳</i>',versionText=versions.length?` · ${versions.length} 个版本`:'';return `<article class="recipe-card">${photo}<div><small>${esc(r.sourceType||'自创')} · ${esc(r.category||'家常菜')} · ${esc(r.status||'草稿')}</small><h3>${esc(r.name)}</h3><p>${esc((r.ingredients||'').split('\n').slice(0,2).join(' · '))}</p><em>做过 ${logs.length} 次${versionText}</em></div><span><button data-kitchen-version="${r._id}">新版本</button><button data-kitchen-edit="${r._id}" data-kind="recipe">编辑</button><button data-kitchen-del="${r._id}" data-col="recipes">删除</button></span></article>`;}).join('');
+      return head+`<div class="recipe-grid">${cards}</div>`;
+    }
+    if(kitchenCookingView==='ideas'){const rows=Store.getList('recipeIdeas');return `<div class="kitchen-view-head"><div><small>先记下来，再慢慢试做</small><strong>${rows.length} 条灵感</strong></div><button data-kitchen-add="idea">＋ 记灵感</button></div>`+(rows.length?rows.map(r=>`<article class="kitchen-note-card"><header><div><small>${esc(r.status||'灵感')}</small><h3>${esc(r.title)}</h3></div><span><button data-idea-convert="${r._id}">转为菜谱</button><button data-kitchen-edit="${r._id}" data-kind="idea">编辑</button><button data-kitchen-del="${r._id}" data-col="recipeIdeas">删除</button></span></header><p>${esc(r.content||'')}</p>${r.questions?`<em>待验证：${esc(r.questions)}</em>`:''}</article>`).join(''):kitchenEmpty('💡','有灵感时先写一句就好'));}
+    if(kitchenCookingView==='logs'){const rows=Store.getList('cookingLogs').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));return `<div class="kitchen-view-head"><div><small>每次做饭都留下改进</small><strong>${rows.length} 次下厨</strong></div><button data-kitchen-add="log">＋ 记一次下厨</button></div>`+(rows.length?rows.map(r=>`<article class="cooking-log-card">${r.photo?`<img src="${esc(r.photo)}">`:'<i>🍽️</i>'}<div><small>${esc(r.date||'')} · ${r.rating?`${r.rating}/5 分`:'未评分'}</small><h3>${esc(r.recipeName)}</h3>${r.changes?`<p>本次：${esc(r.changes)}</p>`:''}${r.nextChange?`<em>下次：${esc(r.nextChange)}</em>`:''}</div><span><button data-kitchen-edit="${r._id}" data-kind="log">编辑</button><button data-kitchen-del="${r._id}" data-col="cookingLogs">删除</button></span></article>`).join(''):kitchenEmpty('🍽️','做完一道菜后，记录这次的心得'));}
+    if(kitchenCookingView==='notes'){const rows=Store.getList('kitchenNotes');return `<div class="kitchen-view-head"><div><small>零散经验也值得沉淀</small><strong>${rows.length} 条厨房笔记</strong></div><button data-kitchen-add="note">＋ 写笔记</button></div>`+(rows.length?rows.map(r=>`<article class="kitchen-note-card"><header><div><small>${esc(r.category||'其他')}</small><h3>${esc(r.title)}</h3></div><span><button data-kitchen-edit="${r._id}" data-kind="note">编辑</button><button data-kitchen-del="${r._id}" data-col="kitchenNotes">删除</button></span></header><p>${esc(r.content||'')}</p></article>`).join(''):kitchenEmpty('📝','记下食材、调味和火候经验'));}
+    const rows=Store.getList('groceryDrafts');return `<div class="kitchen-view-head"><div><small>独立于生活购物清单</small><strong>${rows.length} 张采购单</strong></div><span><button id="grocery-generate">从菜谱生成</button><button data-kitchen-add="grocery">＋ 手动新建</button></span></div>`+(rows.length?rows.map(r=>{const checked=Array.isArray(r.checkedItems)?r.checkedItems:[];return `<article class="grocery-card"><header><div><small>${esc(r.date||'')} · ${esc(r.status||'待采购')}</small><h3>${esc(r.title)}</h3></div><span><button data-copy-grocery="${r._id}">复制</button><button data-kitchen-edit="${r._id}" data-kind="grocery">编辑</button><button data-kitchen-del="${r._id}" data-col="groceryDrafts">删除</button></span></header><div>${String(r.itemsText||'').split('\n').filter(Boolean).map((x,i)=>`<label><input type="checkbox" data-grocery-check="${r._id}" data-item-index="${i}" ${checked.includes(i)?'checked':''}>${esc(x)}</label>`).join('')}</div></article>`;}).join(''):kitchenEmpty('🛒','选择菜谱即可生成独立采购单'));
+  }
+  function kitchenDescriptor(kind){return{recipe:recipeTab,idea:ideaTab,log:cookingLogTab,note:kitchenNoteTab,grocery:groceryTab}[kind];}
+  function bindKitchen(tab){
+    document.querySelectorAll('[data-kitchen-light]').forEach(b=>b.onclick=()=>{kitchenLightView=b.dataset.kitchenLight;renderContent();});document.querySelectorAll('[data-kitchen-view]').forEach(b=>b.onclick=()=>{kitchenCookingView=b.dataset.kitchenView;renderContent();});
+    if(tab.id==='light'&&kitchenLightView!=='logs')bindFitDiet(kitchenDietTab);
+    document.querySelectorAll('[data-diet-status]').forEach(b=>b.onclick=()=>{const old=Store.getList('dietLogs').find(r=>r.date===todayKey());if(old)Store.updateRecord('dietLogs',old._id,{mode:b.dataset.dietStatus,status:'已记录'});else Store.addRecord('dietLogs',{date:todayKey(),mode:b.dataset.dietStatus,status:'已记录'});renderContent();});
+    if(tab.id==='light')document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openForm(kitchenDietTab,b.dataset.edit));
+    const dietAdd=document.querySelector('[data-kitchen-diet-add]');if(dietAdd)dietAdd.onclick=()=>openForm(kitchenDietTab,null,{kind:kitchenLightView==='ideas'?'备选食谱':'固定减脂餐'});
+    document.querySelectorAll('[data-kitchen-add]').forEach(b=>b.onclick=()=>openForm(kitchenDescriptor(b.dataset.kitchenAdd),null,{date:todayKey()}));
+    document.querySelectorAll('[data-kitchen-edit]').forEach(b=>b.onclick=()=>openForm(kitchenDescriptor(b.dataset.kind),b.dataset.kitchenEdit));
+    document.querySelectorAll('[data-kitchen-del]').forEach(b=>b.onclick=()=>{if(confirm('确定删除这条记录？')){Store.deleteRecord(b.dataset.col,b.dataset.kitchenDel);renderContent();}});
+    document.querySelectorAll('[data-idea-convert]').forEach(b=>b.onclick=()=>{const idea=Store.getList('recipeIdeas').find(r=>r._id===b.dataset.ideaConvert);if(idea)openForm(recipeTab,null,{name:idea.title,sourceType:'自创',status:'草稿',steps:idea.content,sourceLink:idea.link,photo:idea.photo},()=>{Store.updateRecord('recipeIdeas',idea._id,{status:'已成菜'});});});
+    document.querySelectorAll('[data-kitchen-version]').forEach(b=>b.onclick=()=>{const recipe=Store.getList('recipes').find(r=>r._id===b.dataset.kitchenVersion),count=Store.getList('recipeVersions').filter(v=>v.recipeId===recipe._id).length;openForm(versionTab,null,{version:`V${count+1}`,ingredients:recipe.ingredients,steps:recipe.steps},saved=>{Store.updateRecord('recipeVersions',saved._id,{recipeId:recipe._id,recipeName:recipe.name});if(saved.recommended)Store.updateRecord('recipes',recipe._id,{currentVersion:saved.version});});});
+    document.querySelectorAll('[data-copy-grocery]').forEach(b=>b.onclick=async()=>{const r=Store.getList('groceryDrafts').find(x=>x._id===b.dataset.copyGrocery);if(r)try{await navigator.clipboard.writeText(`${r.title}\n${r.itemsText||''}`);alert('已复制采购单');}catch(_){alert('复制失败，请手动选择文字');}});
+    document.querySelectorAll('[data-grocery-check]').forEach(box=>box.onchange=()=>{const row=Store.getList('groceryDrafts').find(r=>r._id===box.dataset.groceryCheck);if(!row)return;const index=Number(box.dataset.itemIndex),checked=new Set(Array.isArray(row.checkedItems)?row.checkedItems:[]);box.checked?checked.add(index):checked.delete(index);const itemCount=String(row.itemsText||'').split('\n').filter(Boolean).length;Store.updateRecord('groceryDrafts',row._id,{checkedItems:Array.from(checked).sort((a,b)=>a-b),status:checked.size&&checked.size===itemCount?'已完成':checked.size?'采购中':'待采购'});renderContent();});
+    const generate=document.getElementById('grocery-generate');if(generate)generate.onclick=openGroceryGenerator;
+  }
+  function openGroceryGenerator(){const recipes=Store.getList('recipes');if(!recipes.length){alert('请先添加菜谱');return;}openModal('从菜谱生成采购单',`<form id="grocery-generator"><div class="recipe-picker">${recipes.map(r=>`<label><input type="checkbox" value="${r._id}">${esc(r.name)}</label>`).join('')}</div><div class="form-actions"><button type="button" class="btn-secondary" id="grocery-gen-cancel">取消</button><button class="btn-primary">生成采购单</button></div></form>`);document.getElementById('grocery-gen-cancel').onclick=closeModal;document.getElementById('grocery-generator').onsubmit=e=>{e.preventDefault();const ids=Array.from(e.currentTarget.querySelectorAll('input:checked')).map(x=>x.value),chosen=recipes.filter(r=>ids.includes(r._id));if(!chosen.length)return;const seen=new Set(),items=[];chosen.forEach(r=>String(r.ingredients||'').split('\n').map(x=>x.trim()).filter(Boolean).forEach(x=>{const k=x.toLowerCase();if(!seen.has(k)){seen.add(k);items.push(x);}}));Store.addRecord('groceryDrafts',{title:`${chosen.map(r=>r.name).join('、')}采购单`,date:todayKey(),itemsText:items.join('\n'),status:'待采购',recipeIds:ids});closeModal();renderContent();};}
 
   /* ============================================================
    * 体重 Tab（图表 + 列表）
@@ -1617,6 +1670,10 @@ const App = (function () {
       const totalMin = tasks.reduce((s, r) => s + (parseFloat(r.duration) || 0), 0);
        return { body: miniProgress(0, `${active} 进行中`), foot: `累计 ${Math.round(totalMin * 10) / 10}h` };
     }
+    if(m.id==='kitchen'){
+      const recipes=Store.getList('recipes'),logs=Store.getList('cookingLogs'),todayDiet=Store.getList('dietLogs').some(r=>r.date===tk);
+      return{body:miniProgress(todayDiet?100:0,todayDiet?'今日轻食已记录':`${recipes.length} 道菜谱`),foot:`本月下厨 ${logs.filter(r=>(r.date||'').startsWith(tk.slice(0,7))).length} 次`};
+    }
     if (m.id === 'money') {
       const flows = Store.getList({ collection: 'flows' });
       const ym = tk.slice(0, 7);
@@ -1702,7 +1759,7 @@ const App = (function () {
         ${w.foot ? `<div class="module-tile-foot">${esc(w.foot)}</div>` : ''}
       </div>`;
     };
-    const ids={daily:['discipline','jikui','study','money','life'],review:['rigong','invest','travel'],more:['fun','files','toolbox']};
+    const ids={daily:['discipline','kitchen','jikui','study','money','life'],review:['rigong','invest','travel'],more:['fun','files','toolbox']};
     const tiles=ids.daily.map(id=>tileFor(MODULE_MAP[id])).join(''),reviewTiles=ids.review.map(id=>tileFor(MODULE_MAP[id])).join(''),moreTiles=ids.more.map(id=>tileFor(MODULE_MAP[id])).join('');
     return `
       <div class="home-dashboard">
