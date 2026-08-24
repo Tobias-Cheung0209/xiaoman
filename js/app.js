@@ -221,7 +221,7 @@ const App = (function () {
     return `<input type="text" id="f_${f.key}" value="${esc(v)}" ${f.required ? 'required' : ''}>`;
   }
 
-  function openForm(tab, editId, preset) {
+  function openForm(tab, editId, preset, afterSave) {
     const rec = editId ? Store.getList(tab).find(r => r._id === editId) : null;
     const title = rec ? '编辑' : '新增';
     const body = tab.fields.map(f =>
@@ -278,9 +278,11 @@ const App = (function () {
       });
       const missing = tab.fields.find(f => f.required && (obj[f.key] == null || String(obj[f.key]).trim() === ''));
       if (missing) { alert('请填写：' + missing.label); return; }
-      if (editId) Store.updateRecord(tab, editId, obj);
-      else Store.addRecord(tab, obj);
+      let saved;
+      if (editId) { Store.updateRecord(tab, editId, obj); saved = Store.getList(tab).find(r => r._id === editId); }
+      else saved = Store.addRecord(tab, obj);
       if (tab.collection === 'daily' && obj.done && obj.date) ensureExerciseHabit(obj.date);
+      if (typeof afterSave === 'function') afterSave(saved, obj);
       closeModal();
       renderContent();
     };
@@ -573,8 +575,8 @@ const App = (function () {
   }
   function renderHomeImportantEvents() {
     const list=upcomingImportantEvents(3);
-    if(!list.length)return '';
-    return `<div class="section-title home-event-title">💝 重要日子 <button data-goto="life" data-tab-target="events">查看全部</button></div><button class="home-event-card" data-goto="life" data-tab-target="events">${list.map(({r,next,days})=>`<span class="home-event-row"><i>${esc(r.type||'重要日期')}</i><b>${days===0?`${esc(r.name)}就是今天`:`距离${esc(r.name)}还有${days}天`}</b><small>（${next.getMonth()+1}月${next.getDate()}日）</small></span>`).join('')}</button>`;
+    const rows=list.length?list.map(({r,next,days})=>`<span class="home-event-row"><i>${esc(r.type||'重要日期')}</i><b>${days===0?`${esc(r.name)}就是今天`:`距离${esc(r.name)}还有${days}天`}</b><small>（${next.getMonth()+1}月${next.getDate()}日）</small></span>`).join(''):`<span class="home-event-row empty"><i>＋</i><b>还没有即将到来的重要日子</b><small>点击添加</small></span>`;
+    return `<div class="section-title home-event-title">💝 重要日子 <button data-goto="life" data-tab-target="events">查看全部</button></div><button class="home-event-card" data-goto="life" data-tab-target="events">${rows}</button>`;
   }
 
   /* ============================================================
@@ -586,11 +588,8 @@ const App = (function () {
     const today = all.filter(r => r.date === tk);
     const active = all.filter(r => r.status === '进行中' || r.status === '计划');
     const totalH = today.reduce((s, r) => s + (parseFloat(r.duration) || 0), 0);
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-work"><div class="stat-value">${today.length}</div><div class="stat-label">今日任务</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${active.length}</div><div class="stat-label">进行中</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${totalH}</div><div class="stat-label">今日小时</div></div>
-    </div>`;
+    const focus=today.length?today:active,done=focus.filter(r=>r.status==='已完成').length,pct=focus.length?Math.round(done/focus.length*100):0,current=active[0];
+    const stats = `<section class="study-overview"><div class="study-overview-head"><div><small>📘 今日学习</small><strong>${done} / ${focus.length} 项完成</strong></div><b>${pct}%</b></div><div class="study-progress"><i style="width:${pct}%"></i></div><div class="study-overview-meta"><span>已学习 <b>${Math.round(totalH*10)/10}h</b></span><span>进行中 <b>${active.length}</b></span></div>${current?`<button type="button" data-edit="${current._id}" class="study-current"><small>正在进行</small><b>${esc(current.topic||'学习')} · ${esc(current.goal||'继续积累')}</b></button>`:'<div class="study-current empty"><small>今天还没有安排学习</small><b>保持一点输入，也算向前一步</b></div>'}</section>`;
     const empty = !active.length ? `<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">还没有学习任务，点击 + 添加</div></div>` : '';
     const cards = active.map(r => `<div class="app-card">
       <div class="app-card-head">
@@ -651,11 +650,8 @@ const App = (function () {
     const totalH = all.reduce((s, r) => s + (parseFloat(r.duration) || 0), 0);
     const topics = {};
     all.forEach(r => { const t = r.topic || '其他'; topics[t] = (topics[t] || 0) + (parseFloat(r.duration) || 0); });
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-work"><div class="stat-value">${all.length}</div><div class="stat-label">总记录</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${Math.round(totalH * 10) / 10}</div><div class="stat-label">总小时</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${Object.keys(topics).length}</div><div class="stat-label">主题数</div></div>
-    </div>`;
+    const recent=all[0];
+    const stats = `<section class="study-overview history"><div class="study-overview-head"><div><small>📚 学习积累</small><strong>${all.length} 次记录 · 累计 ${Math.round(totalH*10)/10}h</strong></div><b>${Object.keys(topics).length}</b></div><div class="study-overview-meta"><span>主题 <b>${Object.keys(topics).length}</b></span><span>最近 <b>${esc(recent?.topic||'暂无')}</b></span></div></section>`;
     if (!all.length) return stats + `<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">还没有学习记录</div></div>`;
     const heat = `<div class="habit-section">
       <div class="habit-section-head"><span class="habit-section-title">📅 学习热力图</span><span class="habit-section-stat">累计 ${all.length} 次</span></div>
@@ -771,7 +767,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=32',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=32',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=34',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=34',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -1209,7 +1205,10 @@ const App = (function () {
     const fixedMonthly = subs.reduce((sum, r) => {
       const amount = baseAmount(r.amount, r.currency);
       return sum + amount * ({ 周:52/12, 月:1, 季:1/3, 年:1/12 }[r.cycle || '月'] || 1);
-    }, 0);
+    }, 0) + Store.getList('homeBills').filter(r=>r.enabled!==false).reduce((sum,r)=>{
+      const amount=baseAmount(r.amount,r.currency);
+      return sum+amount*({'每月':1,'每季度':1/3,'每半年':1/6,'每年':1/12}[r.cycle||'每月']||1);
+    },0);
     const cards = [
       ['assets', assetTotal, '资产总额', 'asset'], ['flows', inc, '本月收入', 'income'],
       ['flows', exp, '本月支出', 'expense'], ['flows', inc-exp, '本月结余', 'balance'],
@@ -1591,6 +1590,11 @@ const App = (function () {
     habitNames.filter(h=>!Store.getList('habitLogs').some(r=>r.habit===h&&r.date===tk)).slice(0,2).forEach(h=>items.push({icon:'🔥',text:h,meta:'今日未打卡'}));
     if(Store.getList('daily').length && !Store.getList('daily').some(r=>r.date===tk)) items.push({icon:'🏃',text:'运动',meta:'今日未记录'});
     if(Store.getList('skincare').length && !Store.getList('skincare').some(r=>r.date===tk)) items.push({icon:'🧴',text:'个人护理',meta:'今日未记录'});
+    Store.getList('homeCleanings').filter(r=>r.enabled!==false&&daysUntil(maintenanceDue(r))<=Math.max(7,parseInt(r.remindDays)||0)).sort((a,b)=>daysUntil(maintenanceDue(a))-daysUntil(maintenanceDue(b))).slice(0,2).forEach(r=>items.push({icon:'🔧',text:`${r.name} · ${r.task||'设备养护'}`,meta:dueLabel(maintenanceDue(r))}));
+    Store.getList('homeStocks').filter(r=>r.enabled!==false&&((Number(r.count)||0)<=(Number(r.minCount)||0)||daysUntil(stockDue(r))<=Math.max(7,parseInt(r.remindDays)||0))).slice(0,2).forEach(r=>items.push({icon:'🧴',text:r.name,meta:(Number(r.count)||0)<=(Number(r.minCount)||0)?'库存偏低':`检查存量 · ${dueLabel(stockDue(r))}`}));
+    Store.getList('homeBills').filter(r=>r.enabled!==false&&daysUntil(r.nextDate||r.dueDate)<=Math.max(3,parseInt(r.remindDays)||0)).sort((a,b)=>daysUntil(a.nextDate||a.dueDate)-daysUntil(b.nextDate||b.dueDate)).slice(0,2).forEach(r=>items.push({icon:'💳',text:`${r.name}待入账`,meta:dueLabel(r.nextDate||r.dueDate)}));
+    const ps=Store.getSetting('periodSettings',{});
+    if(ps.remind&&ps.cycleStart){const phase=periodPhase(tk,ps),start=new Date(ps.cycleStart+'T00:00:00'),now=new Date(tk+'T00:00:00'),len=parseInt(ps.cycleLen)||28,diff=Math.floor((now-start)/86400000),inCycle=((diff%len)+len)%len,until=len-inCycle;const meta=phase==='经期'?`经期第 ${inCycle+1} 天`:phase==='排卵期'?'预计排卵期':phase==='易孕期'?'易孕期':`预计经期还有 ${until} 天`;if(phase!=='安全期'||until<=3)items.push({icon:'🌸',text:'柚子 · 周期状态',meta});}
     upcomingImportantEvents(10).filter(ev=>ev.days<=Math.max(7,parseInt(ev.r.remindDays)||0)).slice(0,3).forEach(ev=>items.push({icon:'💝',text:ev.r.name,meta:ev.days===0?'就是今天':ev.days===1?'明天':`还有${ev.days}天`}));
     if (!items.length) return `<div class="reminder-empty">今天没有待办，享受当下吧～</div>`;
     return `<div class="reminder-list">` + items.map(it =>
@@ -1773,25 +1777,45 @@ const App = (function () {
   }
 
   /* ============================================================
-   * 居家事项（机器清洗 / 账目 / 日化囤货 三子类 + 总览）
+   * 居家事项（设备养护 / 固定账单 / 日化库存 + 状态总览）
    * ============================================================ */
-  const homeCleanTab = { id: 'homeCleanings', name: '机器清洗', collection: 'homeCleanings', fields: [
-    { key: 'name', label: '项目', type: 'text', required: true },
-    { key: 'lastDate', label: '上次清洗', type: 'date' },
-    { key: 'cycleDays', label: '周期(天)', type: 'number' },
-    { key: 'note', label: '备注', type: 'text' },
+  const homeCleanTab = { id: 'homeCleanings', name: '设备养护', collection: 'homeCleanings', fields: [
+    { key: 'name', label: '设备名称', type: 'text', required: true },
+    { key: 'task', label: '养护项目', type: 'text', required: true },
+    { key: 'location', label: '所在位置', type: 'selectOther', options: ['厨房','浴室','卧室','客厅','阳台','其他'], def: '厨房' },
+    { key: 'cycle', label: '周期', type: 'select', options: ['每周','每月','每三个月','每半年','每年','自定义','按需'], def: '每月' },
+    { key: 'cycleDays', label: '自定义周期（天）', type: 'number' },
+    { key: 'lastDate', label: '上次完成日期', type: 'date' },
+    { key: 'nextDate', label: '下次日期（可手动调整）', type: 'date' },
+    { key: 'remindDays', label: '提前提醒（天）', type: 'number', def: 7 },
+    { key: 'instructions', label: '操作说明', type: 'textarea' },
+    { key: 'enabled', label: '启用提醒', type: 'checkbox', def: true },
   ] };
-  const homeBillTab = { id: 'homeBills', name: '账目', collection: 'homeBills', fields: [
-    { key: 'name', label: '项目', type: 'text', required: true },
+  const homeBillTab = { id: 'homeBills', name: '固定账单', collection: 'homeBills', fields: [
+    { key: 'name', label: '账单名称', type: 'text', required: true },
     { key: 'amount', label: '金额', type: 'number' },
-    { key: 'dueDate', label: '缴费日', type: 'date' },
-    { key: 'paid', label: '已缴', type: 'checkbox' },
+    { key: 'currency', label: '币种', type: 'select', options: ['€','$','¥'], def: '€' },
+    { key: 'category', label: '流水分类', type: 'select', options: MONEY_CATEGORIES, def: '房租水电' },
+    { key: 'cycle', label: '周期', type: 'select', options: ['每月','每季度','每半年','每年'], def: '每月' },
+    { key: 'entryRule', label: '入账规则', type: 'select', options: ['固定日期','当月月末','下月月初'], def: '下月月初' },
+    { key: 'nextDate', label: '下次入账日期', type: 'date', required: true },
+    { key: 'remindDays', label: '提前提醒（天）', type: 'number', def: 3 },
+    { key: 'account', label: '支付账户', type: 'text' },
+    { key: 'enabled', label: '启用提醒', type: 'checkbox', def: true },
     { key: 'note', label: '备注', type: 'text' },
   ] };
-  const homeStockTab = { id: 'homeStocks', name: '日化囤货', collection: 'homeStocks', fields: [
+  const homeStockTab = { id: 'homeStocks', name: '日化库存', collection: 'homeStocks', fields: [
     { key: 'name', label: '物品', type: 'text', required: true },
+    { key: 'category', label: '分类', type: 'selectOther', options: ['厨房','清洁','洗护','卫生间','食品','其他'], def: '厨房' },
     { key: 'count', label: '数量', type: 'number' },
     { key: 'unit', label: '单位', type: 'text' },
+    { key: 'minCount', label: '最低库存', type: 'number', def: 1 },
+    { key: 'checkCycle', label: '检查周期', type: 'select', options: ['每周','每两周','每月','自定义'], def: '每月' },
+    { key: 'checkDays', label: '自定义周期（天）', type: 'number' },
+    { key: 'lastCheck', label: '上次检查日期', type: 'date' },
+    { key: 'nextCheck', label: '下次检查日期', type: 'date' },
+    { key: 'remindDays', label: '提前提醒（天）', type: 'number', def: 7 },
+    { key: 'enabled', label: '启用提醒', type: 'checkbox', def: true },
     { key: 'note', label: '备注', type: 'text' },
   ] };
   function homeSection(title, icon, addId, list, colKey, editAttr, delAttr, renderRow) {
@@ -1801,37 +1825,62 @@ const App = (function () {
       <div class="home-thing-head"><span>${icon} ${esc(title)}</span><button class="mini-add" id="${addId}">+ 添加</button></div>
       <div class="todo-list">${rows}</div></div>`;
   }
+  function addHomeCycle(dateStr, cycle, customDays) {
+    const d = new Date((dateStr || todayKey()) + 'T00:00:00');
+    if (isNaN(d)) return '';
+    const days = cycle === '每周' ? 7 : cycle === '每两周' ? 14 : cycle === '自定义' ? (parseInt(customDays) || 30) : 0;
+    if (days) d.setDate(d.getDate() + days);
+    else {
+      const months=({ '每月':1, '每三个月':3, '每季度':3, '每半年':6, '每年':12 }[cycle] || 1),day=d.getDate(),wasMonthEnd=day===new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+      d.setDate(1); d.setMonth(d.getMonth()+months); d.setDate(wasMonthEnd?new Date(d.getFullYear(),d.getMonth()+1,0).getDate():Math.min(day,new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));
+    }
+    return dateKey(d);
+  }
+  function daysUntil(dateStr) {
+    if (!dateStr) return Infinity;
+    const d = new Date(dateStr + 'T00:00:00'), now = new Date(todayKey() + 'T00:00:00');
+    return isNaN(d) ? Infinity : Math.round((d - now) / 86400000);
+  }
+  function maintenanceDue(r) { return r.nextDate || (r.lastDate && r.cycle !== '按需' ? addHomeCycle(r.lastDate, r.cycle || (r.cycleDays ? '自定义' : '每月'), r.cycleDays) : ''); }
+  function stockDue(r) { return r.nextCheck || (r.lastCheck ? addHomeCycle(r.lastCheck, r.checkCycle || '每月', r.checkDays) : ''); }
+  function dueLabel(dateStr) { const d=daysUntil(dateStr); return d===Infinity?'未设置日期':d<0?`已逾期 ${-d} 天`:d===0?'今天到期':d===1?'明天':`${d} 天后`; }
   function renderHomeThings(tab) {
     const clean = Store.getList({ collection: 'homeCleanings' });
     const bills = Store.getList({ collection: 'homeBills' });
     const stocks = Store.getList({ collection: 'homeStocks' });
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-life"><div class="stat-value">${clean.length}</div><div class="stat-label">机器清洗</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${bills.length}</div><div class="stat-label">账目</div></div>
-      <div class="stat-card group-life"><div class="stat-value">${stocks.length}</div><div class="stat-label">日化囤货</div></div>
-    </div>`;
-    const cleanSec = homeSection('机器清洗', '🧺', 'hc-add', clean, 'homeCleanings', 'edit-hc', 'del-hc', r => `
+    const maintenanceAlerts=clean.filter(r=>r.enabled!==false&&daysUntil(maintenanceDue(r))<=Math.max(7,parseInt(r.remindDays)||0));
+    const stockAlerts=stocks.filter(r=>r.enabled!==false&&((Number(r.count)||0)<=(Number(r.minCount)||0)||daysUntil(stockDue(r))<=Math.max(7,parseInt(r.remindDays)||0)));
+    const billAlerts=bills.filter(r=>r.enabled!==false&&daysUntil(r.nextDate||r.dueDate)<=Math.max(3,parseInt(r.remindDays)||0));
+    const actions=[...maintenanceAlerts.map(r=>({kind:'养护',name:`${r.name} · ${r.task||'设备养护'}`,date:maintenanceDue(r)})),...stockAlerts.map(r=>({kind:'库存',name:r.name,date:stockDue(r)})),...billAlerts.map(r=>({kind:'账单',name:r.name,date:r.nextDate||r.dueDate}))].sort((a,b)=>daysUntil(a.date)-daysUntil(b.date));
+    const next=actions[0];
+    const fixedTotal=bills.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+    const stats = `<section class="home-dashboard-card"><div class="home-status-head"><div><small>居家状态</small><strong>${actions.length?`有 ${actions.length} 项需要留意`:'整体状态良好'}</strong></div><span>${actions.some(x=>daysUntil(x.date)<0)?'有逾期':'本周'}</span></div>${next?`<div class="home-next"><i>${next.kind==='养护'?'🔧':next.kind==='库存'?'🧴':'💳'}</i><div><small>下一项 · ${next.kind}</small><b>${esc(next.name)}</b><em>${dueLabel(next.date)}</em></div></div>`:'<div class="home-next empty"><i>🏠</i><div><b>暂时没有待处理事项</b><em>添加设备、用品或固定账单后自动提醒</em></div></div>'}<div class="home-overview-grid"><button data-home-jump="hc-add"><i>🔧</i><b>${maintenanceAlerts.length}</b><span>养护待处理</span><small>${clean.length} 项计划</small></button><button data-home-jump="hs-add"><i>🧴</i><b>${stockAlerts.length}</b><span>库存需关注</span><small>${stocks.length} 种用品</small></button><button data-home-jump="hb-add"><i>💳</i><b>${bills.length}</b><span>固定账单</span><small>${baseSymbol()}${fixedTotal.toFixed(0)} 预计</small></button></div></section>`;
+    const cleanSec = homeSection('设备养护', '🔧', 'hc-add', clean, 'homeCleanings', 'edit-hc', 'del-hc', r => `
       <div class="todo-item"><div class="todo-main">
-        <div class="todo-title">${esc(r.name)}</div>
-        <div class="todo-meta">${r.lastDate ? '上次 ' + r.lastDate : ''} ${r.cycleDays ? '· 每 ' + r.cycleDays + ' 天' : ''} ${r.note ? '· ' + esc(r.note) : ''}</div>
+        <div class="todo-title">${esc(r.name)} · ${esc(r.task||'设备养护')}</div>
+        <div class="todo-meta">${esc(r.cycle||(r.cycleDays?`每 ${r.cycleDays} 天`:'按需'))} · ${dueLabel(maintenanceDue(r))}${r.instructions?' · '+esc(r.instructions):''}</div>
       </div>
+      <button class="mini" data-complete-hc="${r._id}">完成</button>
       <button class="shop-item-del" data-${'edit-hc'}="${r._id}">✎</button>
       <button class="shop-item-del" data-${'del-hc'}="${r._id}">×</button></div>`);
-    const billSec = homeSection('账目', '💡', 'hb-add', bills, 'homeBills', 'edit-hb', 'del-hb', r => `
+    const billSec = homeSection('固定账单', '💳', 'hb-add', bills, 'homeBills', 'edit-hb', 'del-hb', r => `
       <div class="todo-item"><div class="todo-main">
-        <div class="todo-title" style="${r.paid ? 'text-decoration:line-through;opacity:.55;' : ''}">${esc(r.name)} ${r.amount ? '€' + parseFloat(r.amount).toFixed(0) : ''}</div>
-        <div class="todo-meta">${r.dueDate ? '缴费日 ' + r.dueDate : ''} ${r.paid ? '· 已缴' : '· 待缴'} ${r.note ? '· ' + esc(r.note) : ''}</div>
+        <div class="todo-title">${esc(r.name)} ${r.amount ? esc(r.currency||'€') + parseFloat(r.amount).toFixed(2) : '金额待确认'}</div>
+        <div class="todo-meta">${dueLabel(r.nextDate||r.dueDate)} · ${esc(r.cycle||'每月')}${r.note?' · '+esc(r.note):''}</div>
       </div>
+      <button class="mini" data-book-hb="${r._id}">确认入账</button>
       <button class="shop-item-del" data-${'edit-hb'}="${r._id}">✎</button>
       <button class="shop-item-del" data-${'del-hb'}="${r._id}">×</button></div>`);
-    const stockSec = homeSection('日化囤货', '🧴', 'hs-add', stocks, 'homeStocks', 'edit-hs', 'del-hs', r => `
+    const stockSec = homeSection('日化库存', '🧴', 'hs-add', stocks, 'homeStocks', 'edit-hs', 'del-hs', r => `
       <div class="todo-item"><div class="todo-main">
         <div class="todo-title">${esc(r.name)} ${r.count ? '×' + r.count + (r.unit ? r.unit : '') : ''}</div>
-        <div class="todo-meta">${r.note ? esc(r.note) : ''}</div>
+        <div class="todo-meta">最低库存 ${r.minCount??1}${esc(r.unit||'')} · ${dueLabel(stockDue(r))}${r.note?' · '+esc(r.note):''}</div>
       </div>
+      <button class="mini" data-check-hs="${r._id}">已检查</button><button class="mini" data-shop-hs="${r._id}">补货</button>
       <button class="shop-item-del" data-${'edit-hs'}="${r._id}">✎</button>
       <button class="shop-item-del" data-${'del-hs'}="${r._id}">×</button></div>`);
-    return stats + cleanSec + billSec + stockSec;
+    const templateBar=`<div class="home-template-bar"><span>已有养护清单可选，不会自动写入</span><button type="button" id="hc-templates">选择模板</button></div>`;
+    return stats + templateBar + cleanSec + billSec + stockSec;
   }
   function bindHomeThings(tab) {
     const root = document.getElementById('tab-body'); if (!root) return;
@@ -1845,6 +1894,35 @@ const App = (function () {
       if (add) add.onclick = () => openForm(t, null);
       root.querySelectorAll(`[data-${editAttr}]`).forEach(b => b.onclick = () => openForm(t, b.getAttribute('data-' + editAttr)));
       root.querySelectorAll(`[data-${delAttr}]`).forEach(b => b.onclick = () => { if (confirm('确定删除？')) { Store.deleteRecord({ collection: col }, b.getAttribute('data-' + delAttr)); renderContent(); } });
+    });
+    root.querySelectorAll('[data-home-jump]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.homeJump)?.scrollIntoView({behavior:'smooth',block:'center'}));
+    root.querySelectorAll('[data-complete-hc]').forEach(b=>b.onclick=()=>{const r=Store.getList('homeCleanings').find(x=>x._id===b.dataset.completeHc);if(!r)return;const now=todayKey();Store.updateRecord('homeCleanings',r._id,{lastDate:now,nextDate:r.cycle==='按需'?'':addHomeCycle(now,r.cycle||(r.cycleDays?'自定义':'每月'),r.cycleDays)});renderContent();});
+    root.querySelectorAll('[data-check-hs]').forEach(b=>b.onclick=()=>{const r=Store.getList('homeStocks').find(x=>x._id===b.dataset.checkHs);if(!r)return;const now=todayKey();Store.updateRecord('homeStocks',r._id,{lastCheck:now,nextCheck:addHomeCycle(now,r.checkCycle||'每月',r.checkDays)});renderContent();});
+    root.querySelectorAll('[data-shop-hs]').forEach(b=>b.onclick=()=>{const r=Store.getList('homeStocks').find(x=>x._id===b.dataset.shopHs);if(!r)return;const exists=Store.getList('items').some(x=>x.sourceType==='homeStock'&&x.sourceId===r._id&&x.status==='未买');if(!exists)Store.addRecord('items',{name:r.name,cat:'家居',qty:Math.max(1,(Number(r.minCount)||1)-(Number(r.count)||0)+1),status:'未买',priority:'必买',sourceType:'homeStock',sourceId:r._id,note:'来自居家库存提醒'});renderContent();});
+    root.querySelectorAll('[data-book-hb]').forEach(b=>b.onclick=()=>bookHomeBill(b.dataset.bookHb));
+    const templates=document.getElementById('hc-templates'); if(templates)templates.onclick=()=>{
+      const rows=[
+        {name:'洗衣机',task:'滚筒清洁档加约 2g 洗衣粉空载清洁',cycle:'每月',location:'浴室',instructions:'使用 Trommel Reinigen 档位'},
+        {name:'洗衣机',task:'清洁排水过滤器和排水管',cycle:'每半年',location:'浴室'},
+        {name:'除湿机',task:'清理滤网',cycle:'每三个月',location:'浴室'},
+        {name:'除湿机',task:'清理面板灰尘并倒掉水箱积水',cycle:'按需',location:'浴室'},
+        {name:'洗碗机',task:'清洁上下喷淋臂和下水滤网',cycle:'每周',location:'厨房',instructions:'同时观察进水与洗碗机盐提示'},
+        {name:'洗碗机',task:'Machine Care 档空载清洗',cycle:'每月',location:'厨房',instructions:'一般使用洗碗片；重油污或异味时使用专用清洁剂'},
+        {name:'温湿度计',task:'更换 CR2032 纽扣电池',cycle:'按需',location:'浴室',instructions:'无显示、联动失效或米家提示时更换；慢慢取下背胶'},
+      ];
+      openModal('选择设备养护模板',`<div class="quick-menu">${rows.map((r,i)=>`<button type="button" data-maint-template="${i}"><b>${r.name}</b><small>${r.task}</small></button>`).join('')}</div>`);
+      document.querySelectorAll('[data-maint-template]').forEach(b=>b.onclick=()=>{const preset=Object.assign({remindDays:7,enabled:true},rows[Number(b.dataset.maintTemplate)]);closeModal();openForm(homeCleanTab,null,preset);});
+    };
+  }
+
+  function bookHomeBill(id) {
+    const bill=Store.getList('homeBills').find(r=>r._id===id); if(!bill)return;
+    const due=bill.nextDate||bill.dueDate||todayKey(),period=due.slice(0,7);
+    if(Store.getList('flows').some(r=>r.sourceType==='homeBill'&&r.sourceId===id&&r.billingPeriod===period)){alert('这个账期已经入账');return;}
+    const flowTab=MODULE_MAP.money.tabs.find(t=>t.id==='flows'),legacyCategory={'住房':'房租水电','水电能源':'房租水电','通信网络':'订阅','保险':'其他'};
+    openForm(flowTab,null,{account:bill.account||'',currency:bill.currency||'€',direction:'支出',category:legacyCategory[bill.category]||bill.category||'房租水电',categoryDetail:legacyCategory[bill.category]?bill.category:'',budgetStatus:'自动匹配',amount:bill.amount||'',date:todayKey(),note:`${bill.name} · ${period}`},saved=>{
+      if(saved)Store.updateRecord('flows',saved._id,{sourceType:'homeBill',sourceId:id,billingPeriod:period});
+      Store.updateRecord('homeBills',id,{lastBookedPeriod:period,lastBookedAmount:saved?.amount||bill.amount||'',nextDate:addHomeCycle(due,bill.cycle||'每月')});
     });
   }
 
