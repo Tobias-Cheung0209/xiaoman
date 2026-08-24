@@ -349,6 +349,7 @@ const App = (function () {
   function getSpecialRenderer(modId, tabId) {
     const map = {
       'life:items': renderShopping,
+      'life:expenses': renderProcurement,
       'life:events': renderEventsCard,
       'life:homeThings': renderHomeThings,
       'life:people': renderPeople,
@@ -366,6 +367,7 @@ const App = (function () {
       'discipline:weight': renderWeightTab,
       'rigong:overview': renderRigongOverview,
       'money:overview': renderMoneyOverview,
+      'money:assets': renderMoneyAccounts,
       'money:flows': renderMoneyFlows,
       'money:goals': renderMoneyGoals,
       'jikui:todos': renderJikuiTodos,
@@ -402,7 +404,6 @@ const App = (function () {
           if (key === 'done') rec[key] = b.checked;
           else if (b.tagName === 'BUTTON') rec[key] = rec[key] === on ? off : on;
           else rec[key] = b.checked ? on : off;
-          const shouldBook=(colKey.collection==='items'||tab.collection==='items')&&key==='status'&&rec.status==='已买'&&!shoppingFlowFor(rec);
           if ((colKey.collection === 'todos' || Store.keyOf(colKey) === 'todos') && key === 'status') rec.completedDate = rec.status === '完成' ? todayKey() : '';
           Store.updateRecord(colKey, rec._id, rec);
           // 心愿清单 ↔ 购物清单 双向联动：购物项标记已买 → 回写心愿状态
@@ -411,7 +412,6 @@ const App = (function () {
             if (wish && wish.status !== '已买') { wish.status = '已买'; Store.updateRecord({ collection: 'wishes' }, wish._id, wish); }
           }
           renderContent();
-          if(shouldBook)setTimeout(()=>openShoppingBooking(rec._id),0);
         }
       };
       if (b.tagName === 'BUTTON') b.onclick = handler;
@@ -434,8 +434,10 @@ const App = (function () {
     };
     // 特殊模块的内置绑定
     if (modId === 'life' && tab.id === 'homeThings') bindHomeThings(tab);
+    else if (modId === 'life' && tab.id === 'expenses') bindProcurement();
     else if (modId === 'calendar' && tab.id === 'overview') bindGlobalCalendar();
     else if (modId === 'life' && tab.id === 'items') bindShopping(tab);
+    else if (modId === 'money' && tab.id === 'assets') bindMoneyAccounts(tab);
     else if (modId === 'life' && tab.id === 'people') bindPeople(tab);
     else if (modId === 'toolbox' && tab.id === 'youzi') bindYouzi(tab);
     else if (modId === 'discipline' && tab.id === 'plans') bindPlans(tab);
@@ -500,70 +502,40 @@ const App = (function () {
    * 购物清单
    * ============================================================ */
   function renderShopping(tab) {
-    const items = Store.getList(tab);
-    const total = items.length;
-    const bought = items.filter(r => r.status === '已买').length;
-    const cancelled = items.filter(r => r.status === '已取消').length;
-    const spent = items.filter(r => r.status === '已买').reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseFloat(it.qty) || 1), 0);
-    const target = Store.getSetting('budgetTarget', 0);
-    const pending = items.filter(r => (r.status || '未买') === '未买');
-    const done = items.filter(r => r.status === '已买');
-    const cancelledItems = items.filter(r => r.status === '已取消');
-    const row = it => { const booked=shoppingFlowFor(it); return `<div class="shop-simple-row ${it.status === '已买' ? 'done' : ''} ${it.status === '已取消' ? 'cancelled' : ''}">
-      <input type="checkbox" aria-label="${esc(it.name)}" data-toggle="${it._id}" data-key="status" data-on="已买" data-off="未买" ${it.status === '已买' ? 'checked' : ''}>
-      <button type="button" class="shop-simple-main" data-edit="${it._id}"><b>${esc(it.name)}</b>${it.qty && Number(it.qty)!==1 ? `<small>×${esc(it.qty)}</small>`:''}${it.price ? `<small>€${parseFloat(it.price).toFixed(2)}</small>`:''}${booked?'<small class="shop-booked">已入账</small>':''}</button>
-      ${it.status==='已买'&&!booked?`<button type="button" class="shop-book-action" data-book-shop="${it._id}">记账</button>`:''}
-      <button type="button" class="shop-simple-more" data-edit="${it._id}" aria-label="编辑 ${esc(it.name)}">···</button>
-      <button type="button" class="shop-simple-delete" data-del="${it._id}" aria-label="删除 ${esc(it.name)}">×</button>
-    </div>`; };
-    return `<div class="shop-simple">
-      <form id="shop-quick-form" class="shop-simple-add"><span>＋</span><input id="shop-quick-input" autocomplete="off" placeholder="添加物品，回车保存" aria-label="添加购物物品"><button type="submit">添加</button></form>
-      <div class="shop-simple-meta"><span>${pending.length} 项待买</span><span>已买 ${bought}/${total}${cancelled ? ` · 取消 ${cancelled}`:''}</span><span>已花 €${spent.toFixed(2)}${target ? ` / €${target}`:''}</span></div>
-      <section class="shop-simple-list">${pending.length ? pending.map(row).join('') : '<div class="shop-simple-empty">没有待买物品，想起什么就记下来吧</div>'}</section>
-      ${done.length ? `<details class="shop-simple-completed"><summary>已完成（${done.length}）</summary>${done.map(row).join('')}</details>`:''}
-      ${cancelledItems.length ? `<details class="shop-simple-completed"><summary>已取消（${cancelledItems.length}）</summary>${cancelledItems.map(row).join('')}</details>`:''}
-      <p class="shop-simple-hint">点击物品可补充或修改分类、价格、数量、链接等完整信息。</p>
-    </div>`;
+    const lists=Store.getList('shoppingLists'),items=Store.getList('items');
+    const cards=lists.map(list=>{const rows=items.filter(r=>r.listId===list._id),done=rows.filter(r=>r.status==='已买').length;return `<section class="shopping-list-card">
+      <header><div><h3>${esc(list.title||'购物清单')}</h3><small>${esc(list.category||'日常采购')} · ${done}/${rows.length} 已买</small></div><button type="button" data-del-shop-list="${list._id}" aria-label="删除清单">×</button></header>
+      <div class="shopping-bullets">${rows.length?rows.map(r=>`<div class="shopping-bullet ${r.status==='已买'?'done':''}"><input type="checkbox" aria-label="${esc(r.name)}" data-toggle="${r._id}" data-key="status" data-on="已买" data-off="未买" ${r.status==='已买'?'checked':''}><span>${esc(r.name)}</span><button type="button" data-del-shop-item="${r._id}" aria-label="删除 ${esc(r.name)}">×</button></div>`).join(''):'<div class="shop-simple-empty">还没有物品</div>'}</div>
+      <form class="shopping-bullet-add" data-list-add="${list._id}"><input autocomplete="off" placeholder="添加物品，回车保存" aria-label="给${esc(list.title||'清单')}添加物品"><button>添加</button></form>
+    </section>`}).join('');
+    return `<div class="shopping-lists"><button type="button" class="shopping-list-create" id="shopping-list-create">＋ 新建购物清单</button>${cards||'<div class="empty-state"><div class="empty-state-icon">🛒</div><div class="empty-state-text">先建一张清单，例如“超市买菜”或“dm购物”</div></div>'}</div>`;
   }
 
   function bindShopping(tab) {
-    const form=document.getElementById('shop-quick-form'), input=document.getElementById('shop-quick-input');
-    if(!form||!input)return;
-    const saveQuick=e=>{if(e)e.preventDefault();const name=input.value.trim();if(!name)return;Store.addRecord(tab,{name,cat:'其他',price:'',buyLink:'',priority:'想要',status:'未买',qty:1,note:''});input.value='';renderContent();};
-    form.onsubmit=saveQuick;input.onkeydown=e=>{if(e.key==='Enter')saveQuick(e);};
-    document.querySelectorAll('[data-book-shop]').forEach(b=>b.onclick=()=>openShoppingBooking(b.dataset.bookShop));
+    const create=document.getElementById('shopping-list-create');if(create)create.onclick=()=>openShoppingListForm();
+    document.querySelectorAll('[data-list-add]').forEach(form=>form.onsubmit=e=>{e.preventDefault();const input=form.querySelector('input'),name=input.value.trim();if(!name)return;Store.addRecord('items',{listId:form.dataset.listAdd,name,status:'未买'});input.value='';renderContent();});
+    document.querySelectorAll('[data-del-shop-item]').forEach(b=>b.onclick=()=>{if(confirm('删除这个物品？')){Store.deleteRecord('items',b.dataset.delShopItem);renderContent();}});
+    document.querySelectorAll('[data-del-shop-list]').forEach(b=>b.onclick=()=>{if(!confirm('删除整张购物清单？'))return;Store.getList('items').filter(r=>r.listId===b.dataset.delShopList).forEach(r=>Store.deleteRecord('items',r._id));Store.deleteRecord('shoppingLists',b.dataset.delShopList);renderContent();});
   }
-
-  function shoppingFlowFor(item) {
-    if (!item) return null;
-    return Store.getList('flows').find(f=>f.sourceType==='shoppingItem'&&f.sourceId===item._id) ||
-      (item.flowId ? Store.getList('flows').find(f=>f._id===item.flowId) : null);
+  function openShoppingListForm(){
+    openModal('新建购物清单',`<form id="shopping-list-form"><div class="form-row"><label>清单名称<i>*</i></label><input id="shopping-list-title" required placeholder="例如：超市买菜、dm购物"></div><div class="form-row"><label>采购类型</label><select id="shopping-list-category"><option>买菜食品</option><option>日化家居</option><option>服饰</option><option>数码</option><option>其他</option></select></div><div class="form-actions"><button type="button" class="btn-secondary" id="shopping-list-cancel">取消</button><button class="btn-primary">创建清单</button></div></form>`);
+    document.getElementById('shopping-list-cancel').onclick=closeModal;document.getElementById('shopping-list-form').onsubmit=e=>{e.preventDefault();const title=document.getElementById('shopping-list-title').value.trim();if(!title)return;Store.addRecord('shoppingLists',{title,category:document.getElementById('shopping-list-category').value,status:'待采购'});closeModal();renderContent();};
   }
-  function openShoppingBooking(itemId) {
-    const item=Store.getList('items').find(r=>r._id===itemId);
-    if(!item)return;
-    if(shoppingFlowFor(item)){alert('这件商品已经记入资金流水');return;}
-    const suggested=(parseFloat(item.price)||0)*(parseFloat(item.qty)||1);
-    const defaultCategory=item.cat==='食品'?'餐饮':['护肤','数码','家居','服饰'].includes(item.cat)?'购物':'日常开销';
-    openModal('购物完成 · 记入资金流水',`<form id="shop-book-form">
-      <div class="shop-book-note"><b>${esc(item.name)}</b><span>确认后会进入资金管理，并参与本月支出与预算统计。</span></div>
-      <div class="form-row"><label>实际总额<i>*</i></label><input id="shop-book-amount" type="number" step="any" min="0.01" required value="${suggested?suggested.toFixed(2):''}" placeholder="填写收银小票总额"></div>
-      <div class="form-row"><label>币种</label><select id="shop-book-currency">${MONEY_CURRENCIES.map(c=>`<option ${c==='€'?'selected':''}>${c}</option>`).join('')}</select></div>
-      <div class="form-row"><label>流水分类</label><select id="shop-book-category">${MONEY_CATEGORIES.map(c=>`<option ${c===defaultCategory?'selected':''}>${c}</option>`).join('')}</select></div>
-      <div class="form-row"><label>日期</label><input id="shop-book-date" type="date" required value="${todayKey()}"></div>
-      <div class="form-actions"><button type="button" class="btn-secondary" id="shop-book-later">暂不入账</button><button type="submit" class="btn-primary">确认入账</button></div>
-    </form>`);
-    document.getElementById('shop-book-later').onclick=closeModal;
-    document.getElementById('shop-book-form').onsubmit=e=>{
-      e.preventDefault();
-      if(shoppingFlowFor(item)){alert('这件商品已经记入资金流水');closeModal();renderContent();return;}
-      const amount=parseFloat(document.getElementById('shop-book-amount').value);
-      if(!Number.isFinite(amount)||amount<=0)return;
-      const currency=document.getElementById('shop-book-currency').value||'€',category=document.getElementById('shop-book-category').value||'购物',date=document.getElementById('shop-book-date').value||todayKey();
-      const flow=Store.addRecord('flows',{account:'',currency,direction:'支出',category,categoryDetail:item.cat||'',budgetStatus:'自动匹配',amount,date,note:`购物清单 · ${item.name}`,sourceType:'shoppingItem',sourceId:item._id});
-      Store.updateRecord('items',item._id,{flowId:flow._id,bookedAt:new Date().toISOString(),actualAmount:amount,actualCurrency:currency});
-      closeModal();renderContent();
-    };
+  function procurementFlow(list){
+    const flows=Store.getList('flows'),direct=flows.find(f=>f.sourceType==='shoppingList'&&f.sourceId===list._id);if(direct)return direct;
+    const childIds=new Set(Store.getList('items').filter(r=>r.listId===list._id).map(r=>r._id)),legacy=flows.filter(f=>f.sourceType==='shoppingItem'&&childIds.has(f.sourceId));
+    if(!legacy.length)return null;return{currency:baseSymbol(),amount:legacy.reduce((s,f)=>s+baseAmount(f.amount,f.currency),0),date:legacy.map(f=>f.date||'').sort().pop()||'',legacy:true};
+  }
+  function renderProcurement(){
+    const lists=Store.getList('shoppingLists'),items=Store.getList('items');if(!lists.length)return '<div class="empty-state"><div class="empty-state-icon">🧾</div><div class="empty-state-text">购物清单会自动出现在这里，买完后整单结算</div></div>';
+    return `<div class="procurement-list">${lists.map(list=>{const rows=items.filter(r=>r.listId===list._id),done=rows.filter(r=>r.status==='已买').length,flow=procurementFlow(list);return `<article class="procurement-card"><div><small>${esc(list.category||'日常采购')} · ${done}/${rows.length} 已买</small><h3>${esc(list.title||'购物清单')}</h3>${flow?`<b>${esc(flow.currency||'€')}${Number(flow.amount||0).toFixed(2)}</b><em>${esc(flow.date||'')} · 已计入资金管理</em>`:'<em>尚未结算</em>'}</div>${flow?'<span class="procurement-done">已结算</span>':`<button type="button" data-settle-list="${list._id}">输入金额并结算</button>`}</article>`;}).join('')}</div>`;
+  }
+  function bindProcurement(){document.querySelectorAll('[data-settle-list]').forEach(b=>b.onclick=()=>openProcurementSettlement(b.dataset.settleList));}
+  function openProcurementSettlement(listId){
+    const list=Store.getList('shoppingLists').find(r=>r._id===listId);if(!list||procurementFlow(list))return;
+    const defaultCategory=list.category==='买菜食品'?'餐饮':list.category==='其他'?'日常开销':'购物';
+    openModal('采购结算',`<form id="procurement-form"><div class="shop-book-note"><b>${esc(list.title)}</b><span>整张清单只生成一笔资金流水。</span></div><div class="form-row"><label>实际支付<i>*</i></label><input id="procurement-amount" type="number" min="0.01" step="any" required autofocus></div><div class="form-row"><label>币种</label><select id="procurement-currency">${MONEY_CURRENCIES.map(c=>`<option ${c==='€'?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-row"><label>分类</label><select id="procurement-category">${MONEY_CATEGORIES.map(c=>`<option ${c===defaultCategory?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-row"><label>日期</label><input id="procurement-date" type="date" value="${todayKey()}" required></div><div class="form-actions"><button type="button" class="btn-secondary" id="procurement-cancel">取消</button><button class="btn-primary">确认结算</button></div></form>`);
+    document.getElementById('procurement-cancel').onclick=closeModal;document.getElementById('procurement-form').onsubmit=e=>{e.preventDefault();if(procurementFlow(list))return;const amount=Number(document.getElementById('procurement-amount').value);if(!(amount>0))return;const currency=document.getElementById('procurement-currency').value,category=document.getElementById('procurement-category').value,date=document.getElementById('procurement-date').value;const flow=Store.addRecord('flows',{account:'',currency,direction:'支出',category,categoryDetail:list.category||'',budgetStatus:'自动匹配',amount,date,note:`采购结算 · ${list.title}`,sourceType:'shoppingList',sourceId:list._id});Store.updateRecord('shoppingLists',list._id,{status:'已结算',flowId:flow._id,settledAt:new Date().toISOString()});closeModal();renderContent();};
   }
 
   /* ============================================================
@@ -816,7 +788,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=40',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=40',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=42',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=42',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -1248,6 +1220,9 @@ const App = (function () {
   function moneySettings() { return Store.getSetting('moneySettings', { base:'€', rates:{'€':1,'$':0.92,'¥':0.13} }); }
   function baseAmount(v, currency) { const s = moneySettings(), rate = parseFloat(s.rates[currency || '€']), baseRate=parseFloat(s.rates[s.base||'€'])||1; return (parseFloat(v)||0) * (Number.isFinite(rate) ? rate : 1) / baseRate; }
   function baseSymbol() { return moneySettings().base || '€'; }
+  function dualValues(valueInBase){const s=moneySettings(),baseRate=parseFloat(s.rates[s.base||'€'])||1,eur=(Number(valueInBase)||0)*baseRate,cnyRate=parseFloat(s.rates['¥'])||0.13;return{eur,cny:eur/cnyRate};}
+  function dualMoney(valueInBase){const v=dualValues(valueInBase);return `<span>€${compactMoney(v.eur)}</span><small>≈ ¥${compactMoney(v.cny)}</small>`;}
+  function nativeMoney(rows){const sums={};rows.forEach(r=>{const c=r.currency||'€';sums[c]=(sums[c]||0)+(Number(r.amount)||0);});return Object.entries(sums).map(([c,v])=>`${c}${compactMoney(v)}`).join(' + ')||'无数据';}
   function budgetWindow(period, now = new Date()) {
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     let end;
@@ -1306,7 +1281,7 @@ const App = (function () {
       ['assets', assetTotal, '资产总额', 'asset'], ['flows', inc, '本月收入', 'income'],
       ['flows', exp, '本月支出', 'expense'], ['flows', inc-exp, '本月结余', 'balance'],
       ['subs', fixedMonthly, '固定支出/月', 'fixed']
-    ].map(([target,value,label,tone]) => `<button class="money-kpi tone-${tone}" data-goto="money" data-tab-target="${target}"><b>${bs}${compactMoney(value)}</b><span>${label}</span><i>›</i></button>`).join('');
+    ].map(([target,value,label,tone]) => `<button class="money-kpi tone-${tone}" data-goto="money" data-tab-target="${target}"><b class="money-dual">${dualMoney(value)}</b><span>${label}</span><i>›</i></button>`).join('');
 
     const assetGroups = {};
     assets.forEach(r => { const key=r.type||'其他'; assetGroups[key]=(assetGroups[key]||0)+baseAmount(r.amount,r.currency); });
@@ -1334,12 +1309,23 @@ const App = (function () {
     const dots=trend.map((r,i)=>r.has?`<circle cx="${(i/5*100).toFixed(1)}" cy="${(44-(r.value-lo)/range*36).toFixed(1)}" r="1.8"/>`:'').join('');
     const trendHtml=`<div class="money-trend"><svg viewBox="-2 0 104 50" preserveAspectRatio="none"><line x1="0" y1="${(44-(0-lo)/range*36).toFixed(1)}" x2="100" y2="${(44-(0-lo)/range*36).toFixed(1)}" class="zero"/><polyline points="${points}"/>${dots}</svg><div>${trend.map(r=>`<span>${r.label}<b>${r.has?(r.value>=0?'+':'')+bs+compactMoney(r.value):'无数据'}</b></span>`).join('')}</div></div>`;
 
-    return `<div class="money-dashboard"><div class="money-kpis">${cards}</div>
+    const native=`<div class="money-native"><span>原币收入 <b>${esc(nativeMoney(month.filter(r=>r.direction==='收入')))}</b></span><span>原币支出 <b>${esc(nativeMoney(month.filter(r=>r.direction==='支出')))}</b></span><span>原币资产 <b>${esc(nativeMoney(assets))}</b></span></div>`;
+    return `<div class="money-dashboard"><div class="money-kpis">${cards}</div>${native}
       <section><h3>资产构成 <small>按类型</small></h3>${assetHtml}</section>
       <section><h3>本月支出去向</h3>${expenseHtml}</section>
       <section><h3>预算状态 <small>月度真实对账</small></h3>${budgetHtml}</section>
       <section><h3>储蓄目标</h3>${goalHtml}</section>
       <section><h3>近 6 月结余趋势</h3>${trendHtml}</section></div>`;
+  }
+
+  function renderMoneyAccounts(tab){
+    const accounts=Store.getList('moneyAssets'),total=accounts.reduce((s,r)=>s+baseAmount(r.amount,r.currency),0),snapshots=Store.getList('moneySnapshots').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,6);
+    const cards=accounts.length?accounts.map(r=>`<article class="account-card"><div><small>${esc(r.type||'账户')} · ${esc(r.currency||'€')}</small><h3>${esc(r.name||'未命名账户')}</h3><b>${esc(r.currency||'€')}${Number(r.amount||0).toFixed(2)}</b><em>${r.updatedAt?`${new Date(r.updatedAt).toLocaleDateString('zh-CN')} 更新`:''}</em></div><span class="app-card-ops"><button data-edit="${r._id}">编辑</button><button class="danger" data-del="${r._id}">删</button></span></article>`).join(''):'<div class="empty-state"><div class="empty-state-icon">💳</div><div class="empty-state-text">添加银行卡、现金、储蓄或投资账户的当前余额</div></div>';
+    const history=snapshots.length?`<section class="account-history"><h3>资产历史 <small>最近 6 次快照</small></h3>${snapshots.map(r=>{const val=baseAmount(r.amount,r.currency),dv=dualValues(val);return `<div><span>${esc(r.date||'')}</span><b>€${compactMoney(dv.eur)} / ¥${compactMoney(dv.cny)}</b></div>`;}).join('')}</section>`:'<div class="empty-hint">保存本月快照后，这里会显示资产变化。</div>';
+    return `<section class="account-summary"><div><small>当前总资产</small><strong>${dualMoney(total)}</strong><em>${accounts.length} 个账户 · 余额由你低频更新</em></div><button type="button" id="save-asset-snapshot" ${accounts.length?'':'disabled'}>保存本月快照</button></section><div class="account-list">${cards}</div>${history}`;
+  }
+  function bindMoneyAccounts(tab){
+    const save=document.getElementById('save-asset-snapshot');if(!save)return;save.onclick=()=>{const accounts=Store.getList('moneyAssets'),total=accounts.reduce((s,r)=>s+baseAmount(r.amount,r.currency),0),period=todayKey().slice(0,7),old=Store.getList('moneySnapshots').find(r=>(r.period||r.date?.slice(0,7))===period),payload={date:todayKey(),period,amount:total,currency:baseSymbol(),accountCount:accounts.length,note:'由账户与资产自动生成'};if(old){if(!confirm('本月已有快照，是否用当前账户余额更新？'))return;Store.updateRecord('moneySnapshots',old._id,payload);}else Store.addRecord('moneySnapshots',payload);renderContent();};
   }
 
   function renderMoneyFlows(tab) {
@@ -1370,8 +1356,12 @@ const App = (function () {
 
   function renderMoneyBudget(tab) {
     const budgets = Store.getList(tab), flows = Store.getList('flows'), bs=baseSymbol();
-    if (!budgets.length) return `<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">还没有预算，点击 + 添加</div></div>`;
-    return budgets.map(b => { const limit=baseAmount(b.limit ?? b.monthlyLimit,b.currency), spent=budgetSpent(b,flows), pct=limit?Math.min(150,spent/limit*100):0;
+    const ym=todayKey().slice(0,7),monthExpenses=flows.filter(f=>f.direction==='支出'&&(f.date||'').startsWith(ym)),monthly=budgets.filter(b=>(b.period||'月')==='月'),totalBudget=monthly.find(b=>(b.cat||'总预算')==='总预算');
+    const explicitOutside=monthExpenses.filter(f=>f.budgetStatus==='预算外'),matched=monthExpenses.filter(f=>f.budgetStatus!=='预算外'&&(totalBudget||monthly.some(b=>b.cat===f.category))),unbudgeted=monthExpenses.filter(f=>f.budgetStatus!=='预算外'&&!totalBudget&&!monthly.some(b=>b.cat===f.category));
+    const sum=rows=>rows.reduce((s,r)=>s+baseAmount(r.amount,r.currency),0),used=sum(matched),outside=sum(explicitOutside),none=sum(unbudgeted),limit=totalBudget?baseAmount(totalBudget.limit??totalBudget.monthlyLimit,totalBudget.currency):0,pct=limit?used/limit*100:0;
+    const overview=`<section class="budget-overview"><div><small>本月总预算</small><strong>${totalBudget?`${bs}${compactMoney(used)} / ${bs}${compactMoney(limit)}`:'尚未设置'}</strong><em>${totalBudget?`剩余 ${bs}${compactMoney(limit-used)} · ${pct.toFixed(0)}%`:'可以只设置总预算，再按需要添加分类预算'}</em></div><div class="budget-split"><span><b>${bs}${compactMoney(used)}</b>预算内</span><span><b>${bs}${compactMoney(outside)}</b>预算外</span><span><b>${bs}${compactMoney(none)}</b>无预算分类</span></div></section>`;
+    if (!budgets.length) return overview+`<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">点击 + 设置第一个预算，建议先从“每月总预算”开始</div></div>`;
+    return overview+budgets.map(b => { const limit=baseAmount(b.limit ?? b.monthlyLimit,b.currency), spent=budgetSpent(b,flows), pct=limit?Math.min(150,spent/limit*100):0;
       return `<div class="app-card"><div class="app-card-head"><span class="app-card-title">${esc(b.cat||'总预算')} · ${esc(b.period||'月')}</span><span class="app-card-ops"><button data-edit="${b._id}">编辑</button><button data-del="${b._id}">删</button></span></div><div class="app-card-body"><p>${bs}${spent.toFixed(0)} / ${bs}${limit.toFixed(0)} · 剩余 ${bs}${(limit-spent).toFixed(0)}</p><div class="progress"><div class="progress-bar" style="width:${Math.min(100,pct)}%;background:${spent>limit?'#ef4444':'var(--work)'}"></div></div></div></div>`;
     }).join('');
   }
@@ -1516,11 +1506,11 @@ const App = (function () {
     const tk = todayKey();
     if (m.id === 'life') {
       const items = Store.getList({ collection: 'items' });
+      const lists = Store.getList('shoppingLists');
       const total = items.length;
       const bought = items.filter(r => r.status === '已买').length;
-      const spent = items.filter(r => r.status === '已买').reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseFloat(it.qty) || 1), 0);
-      if (!total) return { body: miniProgress(0, ''), foot: '还没有购物记录' };
-      return { body: miniProgress(total ? (bought / total) * 100 : 0, `已花 €${spent.toFixed(0)}`), foot: `${bought}/${total} 已买` };
+      if (!total&&!lists.length) return { body: miniProgress(0, ''), foot: '还没有购物清单' };
+      return { body: miniProgress(total ? (bought / total) * 100 : 0, `${lists.length} 张清单`), foot: `${bought}/${total} 已买` };
     }
     if (m.id === 'study') {
       const tasks = Store.getList({ collection: 'studyTasks' });
@@ -1533,10 +1523,11 @@ const App = (function () {
       const flows = Store.getList({ collection: 'flows' });
       const ym = tk.slice(0, 7);
       const month = flows.filter(r => (r.date || '').startsWith(ym));
-      const inc = month.filter(r => r.direction === '收入').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-      const exp = month.filter(r => r.direction === '支出').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+      const inc = month.filter(r => r.direction === '收入').reduce((s, r) => s + baseAmount(r.amount,r.currency), 0);
+      const exp = month.filter(r => r.direction === '支出').reduce((s, r) => s + baseAmount(r.amount,r.currency), 0);
       if (!flows.length) return { body: miniBars([], 1), foot: '还没有收支记录' };
-      return { body: miniBars([{ label: '收入', value: inc }, { label: '支出', value: exp }], Math.max(inc, exp, 1)), foot: `本月结余 €${(inc - exp).toFixed(0)}` };
+      const dv=dualValues(inc-exp);
+      return { body: miniBars([{ label: '收入', value: inc }, { label: '支出', value: exp }], Math.max(inc, exp, 1)), foot: `结余 €${compactMoney(dv.eur)} / ¥${compactMoney(dv.cny)}` };
     }
     if (m.id === 'travel') {
       const dest = Store.getList({ collection: 'destinations' });
@@ -2251,6 +2242,12 @@ const App = (function () {
   }
 
   function init() {
+    Store.migrateOnce('shoppingListsV1',d=>{
+      const items=(d.collections.items||[]).filter(r=>!r.deletedAt&&!r.listId);if(!items.length)return;
+      const now=new Date().toISOString(),id=crypto.randomUUID?crypto.randomUUID():'sl'+Date.now();
+      d.collections.shoppingLists=d.collections.shoppingLists||[];d.collections.shoppingLists.push({_id:id,title:'旧购物清单',category:'其他',status:'待采购',createdAt:now,updatedAt:now,deletedAt:null,schemaVersion:2});
+      items.forEach(r=>{r.listId=id;r.updatedAt=now;});
+    });
     Store.migrateOnce('plansV1', d => {
       const out=d.collections.plans||[], uid=()=>crypto.randomUUID?crypto.randomUUID():'p'+Date.now()+Math.random(); const now=new Date().toISOString();
       (d.collections.lifeTodos||[]).filter(r=>!r.deletedAt).forEach(r=>out.push({_id:uid(),title:r.item||'未命名待办',date:r.due||'',time:r.timeRange||'',priority:r.priority||'中',domain:r.domain||'生活',repeat:'不重复',status:r.status==='完成'?'完成':'计划',note:r.note||'',createdAt:r.createdAt||r._created||now,updatedAt:r.updatedAt||now,deletedAt:null,schemaVersion:2,migratedFrom:r._id}));

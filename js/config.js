@@ -166,23 +166,14 @@ const MODULES = [
   /* ---- 生活（生活·红） ---- */
   {
     id: 'life', name: '生活', icon: '🌸', group: 'life', render: 'tabs',
-    desc: '购物预算 · 清单 · 重要日子 · 居家 · 人物',
+    desc: '采购开销 · 清单 · 重要日子 · 居家 · 人物',
     tabs: [
       {
-        id: 'budget', name: '购物预算', type: 'budget', currency: '€',
+        id: 'expenses', name: '采购开销', type: 'list', collection: 'shoppingLists', special: 'procurement', fields: [],
       },
       {
         id: 'items', name: '购物清单', type: 'list', collection: 'items', special: 'shopping',
-        fields: [
-          { key: 'name', label: '名称', type: 'text', required: true },
-          { key: 'cat', label: '分类', type: 'select', options: ['护肤', '数码', '家居', '服饰', '食品', '其他'], def: '其他' },
-          { key: 'price', label: '预估价', type: 'number' },
-          { key: 'buyLink', label: '购买链接', type: 'text' },
-          { key: 'priority', label: '优先级', type: 'select', options: ['必买', '想要'], def: '想要' },
-          { key: 'status', label: '状态', type: 'select', options: ['未买', '已买', '已取消'], def: '未买' },
-          { key: 'qty', label: '数量', type: 'number', def: 1 },
-          { key: 'note', label: '备注', type: 'text' },
-        ],
+        fields: [],
       },
       {
         id: 'events', name: '重要日期', type: 'list', collection: 'events', special: 'eventsCard',
@@ -384,7 +375,7 @@ const MODULES = [
         fields: [],
       },
       {
-        id: 'assets', name: '资产', type: 'list', collection: 'moneyAssets',
+        id: 'assets', name: '账户与资产', type: 'list', collection: 'moneyAssets', special: 'moneyAccounts',
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'type', label: '类型', type: 'selectOther', options: ['现金', '储蓄', '投资', '其他'], def: '储蓄' },
@@ -441,12 +432,6 @@ const MODULES = [
           { key: 'method', label: '支付方式', type: 'text' },
         ],
       },
-      { id: 'snapshots', name: '资产快照', type: 'list', collection: 'moneySnapshots', fields: [
-        { key: 'date', label: '日期', type: 'date', required: true },
-        { key: 'amount', label: '资产总额', type: 'number', required: true },
-        { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
-        { key: 'note', label: '备注', type: 'text' },
-      ] },
     ],
   },
 
