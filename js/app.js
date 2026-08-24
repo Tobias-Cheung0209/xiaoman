@@ -281,14 +281,27 @@ const App = (function () {
       });
       const missing = tab.fields.find(f => f.required && (obj[f.key] == null || String(obj[f.key]).trim() === ''));
       if (missing) { alert('请填写：' + missing.label); return; }
+      const collection=Store.keyOf(tab);
+      if (rec&&['todos','plans'].includes(collection)&&obj.status!==rec.status) obj.completedDate=obj.status==='完成'?todayKey():'';
       let saved;
-      if (editId) { Store.updateRecord(tab, editId, obj); saved = Store.getList(tab).find(r => r._id === editId); }
+      if (editId) { trackScheduleChange(tab, rec, obj); Store.updateRecord(tab, editId, obj); saved = Store.getList(tab).find(r => r._id === editId); }
       else saved = Store.addRecord(tab, obj);
       if (tab.collection === 'daily' && obj.done && obj.date) ensureExerciseHabit(obj.date);
       if (typeof afterSave === 'function') afterSave(saved, obj);
       closeModal();
       renderContent();
     };
+  }
+
+  function trackScheduleChange(tab, rec, obj) {
+    if (!rec) return;
+    const collection=Store.keyOf(tab), keys={plans:'date',todos:'due',studyTasks:'date',investChecks:'date',investHoldings:'reviewDate',homeCleanings:'nextDate',homeStocks:'nextCheck',homeBills:'nextDate',docs:'reviewDate'};
+    const key=keys[collection], before=key&&rec[key], after=key&&obj[key];
+    if (!before||!after||before===after||before>=todayKey()||after<=before) return;
+    const days=Math.max(1,Math.round((new Date(after+'T00:00:00')-new Date(before+'T00:00:00'))/86400000));
+    obj.rescheduleCount=(Number(rec.rescheduleCount)||0)+1;
+    obj.rescheduleDays=(Number(rec.rescheduleDays)||0)+days;
+    obj.scheduleHistory=[...(Array.isArray(rec.scheduleHistory)?rec.scheduleHistory:[]),{from:before,to:after,changedAt:new Date().toISOString()}].slice(-20);
   }
 
   /* ---------------- 预算 Tab ---------------- */
@@ -408,7 +421,7 @@ const App = (function () {
           if (key === 'done') rec[key] = b.checked;
           else if (b.tagName === 'BUTTON') rec[key] = rec[key] === on ? off : on;
           else rec[key] = b.checked ? on : off;
-          if ((colKey.collection === 'todos' || Store.keyOf(colKey) === 'todos') && key === 'status') rec.completedDate = rec.status === '完成' ? todayKey() : '';
+          if (['todos','plans'].includes(colKey.collection||Store.keyOf(colKey)) && key === 'status') rec.completedDate = rec.status === '完成' ? todayKey() : '';
           Store.updateRecord(colKey, rec._id, rec);
           // 心愿清单 ↔ 购物清单 双向联动：购物项标记已买 → 回写心愿状态
           if ((colKey.collection === 'items' || (tab.collection === 'items')) && rec.linkWish && rec.status === '已买') {
@@ -600,8 +613,8 @@ const App = (function () {
     return Store.getList({collection:'events'}).map(r=>{const next=computeNextEvent(r,today);return next?{r,next,days:Math.round((next-today)/86400000)}:null;}).filter(Boolean).sort((a,b)=>a.days-b.days).slice(0,limit||3);
   }
   function renderHomeSchedule() {
-    const today=todayKey(),weekEnd=new Date();weekEnd.setDate(weekEnd.getDate()+7);const monthEnd=new Date();monthEnd.setDate(monthEnd.getDate()+30),past=new Date();past.setFullYear(past.getFullYear()-1);
-    const todayEvents=collectTimeEvents(today,today),weekEvents=collectTimeEvents(today,dateKey(weekEnd)),overdue=collectTimeEvents(dateKey(past),today).filter(e=>e.date<today).length;
+    const today=todayKey(),weekEnd=new Date();weekEnd.setDate(weekEnd.getDate()+7);const monthEnd=new Date();monthEnd.setDate(monthEnd.getDate()+30);
+    const todayEvents=collectTimeEvents(today,today),weekEvents=collectTimeEvents(today,dateKey(weekEnd)),overdue=actionableOverdueItems().length;
     const birthdayRows=upcomingImportantEvents(100).filter(x=>(x.r.type||'')==='生日'&&x.days<=14).map(x=>({label:'生日',title:x.r.name,date:dateKey(x.next),days:x.days}));
     const personal=upcomingImportantEvents(100).filter(x=>(x.r.type||'')!=='生日'&&x.days<=30).map(x=>({label:x.r.type||'重要日期',title:x.r.name,date:dateKey(x.next),days:x.days}));
     const linked=collectTimeEvents(today,dateKey(monthEnd)).filter(e=>e.sourceCollection!=='events'&&['home','money','invest','travel','health','file'].includes(e.category)).map(e=>({label:(CAL_CATS[e.category]||['事项'])[0],title:e.title,date:e.date,days:daysUntil(e.date)}));
@@ -801,7 +814,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=45',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=45',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=46',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=46',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -989,6 +1002,18 @@ const App = (function () {
     }
     const hour=new Date().getHours(); if(todayKey()>=from&&todayKey()<=to&&hour>=20&&!Store.getList('rigongLogs').some(r=>r.date===todayKey())) add(todayKey(),'写下今日回望','review','rigong','overview','rigongLogs',null);
     return out.sort((a,b)=>(a.date+(a.time||'')).localeCompare(b.date+(b.time||'')));
+  }
+  function actionableOverdueItems() {
+    const tk=todayKey(), rows=[],push=(date,title,category,collection,id)=>{if(date&&date<tk)rows.push({date,title:title||'未命名事项',category,collection,id});};
+    Store.getList('plans').filter(r=>r.status!=='完成'&&(!r.repeat||r.repeat==='不重复')).forEach(r=>push(r.date,r.title,r.domain||'计划','plans',r._id));
+    Store.getList('todos').filter(r=>r.status!=='完成').forEach(r=>push(r.due,r.item,'工作','todos',r._id));
+    Store.getList('studyTasks').filter(r=>r.status!=='已完成').forEach(r=>push(r.date,r.goal||r.topic,'学习','studyTasks',r._id));
+    Store.getList('investChecks').filter(r=>(r.status||'待检查')==='待检查').forEach(r=>push(r.date,r.title,'投资','investChecks',r._id));
+    Store.getList('homeCleanings').filter(r=>r.enabled!==false).forEach(r=>push(maintenanceDue(r),r.name,'居家养护','homeCleanings',r._id));
+    Store.getList('homeStocks').filter(r=>r.enabled!==false).forEach(r=>push(stockDue(r),r.name,'居家库存','homeStocks',r._id));
+    Store.getList('homeBills').filter(r=>r.enabled!==false).forEach(r=>push(r.nextDate||r.dueDate,r.name,'账单','homeBills',r._id));
+    Store.getList('docs').filter(r=>(r.status||'待处理')!=='已归档').forEach(r=>push(r.reviewDate,r.name,'文档','docs',r._id));
+    return rows.sort((a,b)=>a.date.localeCompare(b.date));
   }
   function renderGlobalCalendar() {
     const y=globalCalendarMonth.getFullYear(),m=globalCalendarMonth.getMonth(),first=new Date(y,m,1),start=new Date(y,m,1-first.getDay()),end=new Date(start);end.setDate(end.getDate()+41);
@@ -1249,7 +1274,17 @@ const App = (function () {
     ],done=states.filter(x=>x[1]).length;
     const status=states.map(x=>`<button data-goto="${x[2]}" data-tab-target="${x[3]}" class="${x[1]?'on':''}"><i>${x[1]?'●':'○'}</i><span>${x[0]}</span><small>${x[1]?'有记录':'未记录'}</small></button>`).join('');
     const reflection=todayDiary?`<section class="reflection-card complete"><small>今天已经留下回望</small><p>${esc(todayDiary.note||'今天也认真生活过。')}</p><button data-goto="rigong" data-tab-target="diary">查看往日记录</button></section>`:`<section class="reflection-card"><small>用一分钟，为今天收个尾</small><h3>今天整体状态如何？</h3><p>工作学习是否努力、高效？有什么值得保持或调整？</p><button id="rigong-reflect">写下今日回望</button></section>`;
-    return `<section class="compact-summary rigong-summary"><div><small>今日一拱</small><strong>${done ? `${done} 项留下了记录` : '今天还没有留下记录'}</strong></div><span>${done}/5</span></section><div class="daily-signal-grid">${status}</div>${reflection}`;
+    return `<section class="compact-summary rigong-summary"><div><small>今日一拱</small><strong>${done ? `${done} 项留下了记录` : '今天还没有留下记录'}</strong></div><span>${done}/5</span></section><div class="daily-signal-grid">${status}</div>${renderExecutionReview()}${reflection}`;
+  }
+  function renderExecutionReview() {
+    const since=dateKey(new Date(Date.now()-29*86400000)),todos=Store.getList('todos'),plans=Store.getList('plans');
+    const completed=[...todos.filter(r=>r.status==='完成'&&r.completedDate>=since).map(r=>({date:r.completedDate,due:r.due})),...plans.filter(r=>r.status==='完成'&&r.completedDate>=since).map(r=>({date:r.completedDate,due:r.date}))];
+    const scheduled=completed.filter(r=>r.due),onTime=scheduled.filter(r=>r.date<=r.due).length,onTimeRate=scheduled.length?Math.round(onTime/scheduled.length*100):0;
+    const collections=['plans','todos','studyTasks','investChecks','investHoldings','homeCleanings','homeStocks','homeBills','docs'],moved=[];
+    collections.forEach(collection=>Store.getList(collection).forEach(r=>(r.scheduleHistory||[]).filter(h=>(h.changedAt||'').slice(0,10)>=since).forEach(h=>moved.push({collection,days:Math.max(1,Math.round((new Date(h.to+'T00:00:00')-new Date(h.from+'T00:00:00'))/86400000))}))));
+    const avg=moved.length?Math.round(moved.reduce((s,r)=>s+r.days,0)/moved.length):0,overdue=actionableOverdueItems(),labels={plans:'计划',todos:'工作',studyTasks:'学习',investChecks:'投资',investHoldings:'投资',homeCleanings:'居家',homeStocks:'居家',homeBills:'账单',docs:'文档'},counts={};moved.forEach(r=>counts[labels[r.collection]||'其他']=(counts[labels[r.collection]||'其他']||0)+1);const frequent=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    const insight=!completed.length&&!moved.length?'执行数据会从现在开始积累，不评价正常调整。':moved.length?`${frequent?frequent[0]+'类调整较多 · ':''}重新安排不等于拖延，留意反复延期即可。`:'近30天没有延期记录，节奏保持得不错。';
+    return `<section class="execution-review"><header><div><small>近30天</small><h3>执行回顾</h3></div><span>${overdue.length?'有待调整':'节奏稳定'}</span></header><div class="execution-metrics"><i><b>${scheduled.length?onTimeRate+'%':'—'}</b>按时完成</i><i><b>${moved.length}</b>延期调整</i><i><b>${avg?avg+'天':'—'}</b>平均延期</i><i class="${overdue.length?'warn':''}"><b>${overdue.length}</b>当前逾期</i></div><p>${esc(insight)}</p>${overdue.length?`<details><summary>查看当前逾期事项</summary>${overdue.slice(0,6).map(r=>`<span><b>${esc(r.title)}</b><small>${esc(r.category)} · 已逾期 ${Math.abs(daysUntil(r.date))} 天</small></span>`).join('')}</details>`:''}</section>`;
   }
 
   /* ============================================================
