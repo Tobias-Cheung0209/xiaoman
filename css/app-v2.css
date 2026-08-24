@@ -759,6 +759,32 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
   box-shadow: 0 4px 14px rgba(140,150,180,.18);
   z-index: 2;
 }
+.xm-bubble-reminder {
+  width: min(270px, 68vw);
+  max-width: 270px;
+  padding: 13px 14px 11px;
+  display: grid;
+  gap: 5px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+.xm-bubble-reminder b,
+.xm-bubble-reminder span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+}
+.xm-bubble-reminder b { padding-right: 18px; color: var(--text-1); -webkit-line-clamp: 1; }
+.xm-bubble-reminder span { color: var(--text-2); -webkit-line-clamp: 2; }
+.xm-bubble-close {
+  position: absolute; top: 5px; right: 7px;
+  width: 25px; height: 25px; border: 0; padding: 0;
+  background: transparent; color: var(--text-3); font-size: 19px; line-height: 25px;
+}
+.xm-bubble-view {
+  justify-self: start; border: 0; padding: 4px 0 0;
+  background: transparent; color: var(--work-deep); font-size: 12px; font-weight: 700;
+}
 .xm-bubble::after {
   content: '';
   position: absolute; right: 24px; bottom: -8px;
