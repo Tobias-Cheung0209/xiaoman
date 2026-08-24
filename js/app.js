@@ -314,8 +314,8 @@ const App = (function () {
   function renderWeightChart() {
     const list = Store.getList({ collection: 'weight' }).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     if (list.length < 2) return '';
-    const w = list.map(r => parseFloat(r.weight)).filter(x => !isNaN(x));
-    const min = Math.min(...w), max = Math.max(...w);
+    const w = list.map(r => parseFloat(r.weight)).filter(x => !isNaN(x)), goals=list.map(r=>parseFloat(r.goal)).filter(x=>!isNaN(x)), scaleValues=w.concat(goals);
+    const min = Math.min(...scaleValues), max = Math.max(...scaleValues);
     const pad = (max - min) * 0.15 || 1;
     const lo = min - pad, hi = max + pad;
     const W = 600, H = 180, ml = 36, mb = 24;
@@ -326,11 +326,14 @@ const App = (function () {
       return [x, y, r.date, r.weight];
     });
     const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const avgPts=list.map((r,i)=>{const rows=list.slice(Math.max(0,i-6),i+1),avg=rows.reduce((s,x)=>s+(parseFloat(x.weight)||0),0)/rows.length,x=ml+(W-ml)*(i/(n-1)),y=mb+(H-mb)*(1-(avg-lo)/(hi-lo));return[x,y];}),avgLine=avgPts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' '),goal=[...list].reverse().find(r=>parseFloat(r.goal)),goalY=goal?mb+(H-mb)*(1-(parseFloat(goal.goal)-lo)/(hi-lo)):null;
     const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" class="dot"/><title>${p[2]}: ${p[3]}kg</title>`).join('');
     return `<div class="chart-box"><svg viewBox="0 0 ${W} ${H}" class="line-chart">
       <line x1="${ml}" y1="${H - mb}" x2="${W}" y2="${H - mb}" class="axis"/>
       <line x1="${ml}" y1="0" x2="${ml}" y2="${H - mb}" class="axis"/>
       <path d="${line}" class="line"/>
+      <path d="${avgLine}" class="line weight-average"/>
+      ${goalY!=null?`<line x1="${ml}" y1="${goalY.toFixed(1)}" x2="${W}" y2="${goalY.toFixed(1)}" class="weight-goal"/>`:''}
       ${dots}</svg></div>`;
   }
 
@@ -363,6 +366,7 @@ const App = (function () {
       'discipline:plans': renderPlans,
       'discipline:habits': renderHabits,
       'discipline:fitDaily': renderFitnessDaily,
+      'discipline:fitDiet': renderFitDiet,
       'discipline:skincare': renderSkincare,
       'discipline:weight': renderWeightTab,
       'rigong:overview': renderRigongOverview,
@@ -441,7 +445,8 @@ const App = (function () {
     else if (modId === 'life' && tab.id === 'people') bindPeople(tab);
     else if (modId === 'toolbox' && tab.id === 'youzi') bindYouzi(tab);
     else if (modId === 'discipline' && tab.id === 'plans') bindPlans(tab);
-    else if (modId === 'discipline' && tab.id === 'habits') bindHabits(tab);
+    else if (modId === 'discipline' && tab.id === 'fitDaily') document.getElementById('fitness-add')?.addEventListener('click',()=>openForm(tab,null,{date:todayKey(),done:true}));
+    else if (modId === 'discipline' && tab.id === 'fitDiet') bindFitDiet(tab);
     else if (modId === 'rigong' && tab.id === 'overview') {
       const reflect=document.getElementById('rigong-reflect'), diaryTab=MODULE_MAP.rigong.tabs.find(t=>t.id==='diary');
       if(reflect)reflect.onclick=()=>openForm(diaryTab,null,{date:todayKey()});
@@ -569,7 +574,7 @@ const App = (function () {
   }
   function renderEventsCard(tab) {
     const list = Store.getList(tab);
-    if (!list.length) return `<div class="empty-state"><div class="empty-state-icon">💝</div><div class="empty-state-text">还没有重要日期，点击 + 添加</div></div>`;
+    if (!list.length) return `<div class="empty-state"><div class="empty-state-icon">🗓️</div><div class="empty-state-text">还没有重要日期，点击 + 添加</div></div>`;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const items = list.map(r => {
       const next = computeNextEvent(r, today);
@@ -595,9 +600,12 @@ const App = (function () {
     return Store.getList({collection:'events'}).map(r=>{const next=computeNextEvent(r,today);return next?{r,next,days:Math.round((next-today)/86400000)}:null;}).filter(Boolean).sort((a,b)=>a.days-b.days).slice(0,limit||3);
   }
   function renderHomeImportantEvents() {
-    const list=upcomingImportantEvents(3);
-    const rows=list.length?list.map(({r,next,days})=>`<span class="home-event-row"><i>${esc(r.type||'重要日期')}</i><b>${days===0?`${esc(r.name)}就是今天`:`距离${esc(r.name)}还有${days}天`}</b><small>（${next.getMonth()+1}月${next.getDate()}日）</small></span>`).join(''):`<span class="home-event-row empty"><i>＋</i><b>还没有即将到来的重要日子</b><small>点击添加</small></span>`;
-    return `<div class="section-title home-event-title">💝 重要日子 <button data-goto="life" data-tab-target="events">查看全部</button></div><button class="home-event-card" data-goto="life" data-tab-target="events">${rows}</button>`;
+    const end=new Date();end.setDate(end.getDate()+30);const birthdayRows=upcomingImportantEvents(100).filter(x=>(x.r.type||'')==='生日'&&x.days<=14).map(x=>({label:'生日',title:x.r.name,date:dateKey(x.next),days:x.days,priority:0}));
+    const personal=upcomingImportantEvents(100).filter(x=>(x.r.type||'')!=='生日'&&x.days<=30).map(x=>({label:x.r.type||'重要日期',title:x.r.name,date:dateKey(x.next),days:x.days,priority:1}));
+    const linked=collectTimeEvents(todayKey(),dateKey(end)).filter(e=>e.sourceCollection!=='events'&&['home','money','invest','travel','health','file'].includes(e.category)).map(e=>({label:(CAL_CATS[e.category]||['事项'])[0],title:e.title,date:e.date,days:daysUntil(e.date),priority:2}));
+    const seen=new Set(),ordinary=[...personal,...linked].sort((a,b)=>a.days-b.days).filter(x=>{const k=x.label+x.title+x.date;if(seen.has(k))return false;seen.add(k);return true;}).slice(0,3),list=[...birthdayRows,...ordinary].sort((a,b)=>a.days-b.days);
+    const rows=list.length?list.map(r=>`<span class="home-event-row"><i>${esc(r.label)}</i><b>${r.days===0?`${esc(r.title)}就是今天`:`距离${esc(r.title)}还有${r.days}天`}</b><small>（${Number(r.date.slice(5,7))}月${Number(r.date.slice(8,10))}日）</small></span>`).join(''):`<span class="home-event-row empty"><i>＋</i><b>未来30天暂无近期节点</b><small>点击查看日历</small></span>`;
+    return `<div class="section-title home-event-title">📅 近期节点 <button data-goto="calendar">查看全部</button></div><button class="home-event-card" data-goto="calendar">${rows}</button>`;
   }
 
   /* ============================================================
@@ -788,7 +796,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=43',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=43',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=44',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=44',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -1067,7 +1075,15 @@ const App = (function () {
     const agenda=plans.filter(r=>planOccurs(r,selectedPlanDate)).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
     const unscheduled=plans.filter(r=>!r.date&&r.status!=='完成');
     const selected=new Date(selectedPlanDate+'T00:00:00'),week='日一二三四五六'[selected.getDay()];
-    return `<div class="plan-summary">本月 ${monthPlans.length} 项 · 共 ${total} 项 · 已完成 ${done} 项 · ${total?Math.round(done/total*100):0}%</div>
+    const manualSleep=Store.getList('habitLogs').find(r=>r.habit==='早睡早起'&&r.date===tk), signals=[
+      ['📚','读书',Store.getList('bookLogs').some(r=>r.date===tk),'自动'],
+      ['🎓','学习',Store.getList('studyTasks').some(r=>r.date===tk),'自动'],
+      ['🏃','运动',Store.getList('daily').some(r=>r.date===tk&&r.done!==false),'自动'],
+      ['🧴','护理',Store.getList('skincare').some(r=>r.date===tk),'自动'],
+      ['🌙','早睡',!!manualSleep,'手动']
+    ];
+    const todayStatus=`<section class="plan-today-status"><header><div><small>今日状态</small><strong>自动读取各模块记录</strong></div><span>${signals.filter(x=>x[2]).length}/5</span></header><div>${signals.map(([icon,name,on,mode])=>`<button type="button" class="${on?'on':''} ${mode==='手动'?'manual':''}" ${mode==='手动'?'data-manual-habit="早睡早起"':`data-signal-goto="${name}"`}><i>${icon}</i><b>${name}</b><small>${on?'已记录':mode==='手动'?'可手动':'未记录'}</small></button>`).join('')}</div><em>读书、学习、运动、护理由记录自动点亮 · 手动习惯可再次点击撤销</em></section>`;
+    return `${todayStatus}<div class="plan-summary">本月 ${monthPlans.length} 项 · 共 ${total} 项 · 已完成 ${done} 项 · ${total?Math.round(done/total*100):0}%</div>
       <form class="plan-quick" id="plan-quick-form"><span>＋</span><input type="text" id="quick-add-input" placeholder="添加计划，回车保存" autocomplete="off"><input type="date" id="quick-add-date" value="${selectedPlanDate}"><button type="button" id="special-add">详细</button></form>
       <div class="plan-layout"><section class="plan-calendar-card"><header><button type="button" data-plan-prev aria-label="上个月">‹</button><h3>${y} 年 ${m+1} 月</h3><button type="button" data-plan-next aria-label="下个月">›</button><button type="button" class="plan-today-btn" data-plan-today>今天</button></header><div class="plan-weekdays">${'一二三四五六日'.split('').map(x=>`<span>${x}</span>`).join('')}</div><div class="plan-calendar-grid">${cells}</div></section>
       <aside class="plan-side"><section class="plan-agenda"><header><h3>${selected.getMonth()+1} 月 ${selected.getDate()} 日 · 周${week}</h3><button type="button" id="plan-day-add">＋</button></header>${agenda.length?agenda.map(r=>planAgendaRow(r,selectedPlanDate)).join(''):'<div class="empty-hint">当天没有计划</div>'}</section>
@@ -1084,6 +1100,8 @@ const App = (function () {
     const detail=document.getElementById('special-add'),dayAdd=document.getElementById('plan-day-add');
     if(detail)detail.onclick=()=>openForm(tab,null,{date:document.getElementById('quick-add-date').value});
     if(dayAdd)dayAdd.onclick=()=>openForm(tab,null,{date:selectedPlanDate});
+    document.querySelector('[data-manual-habit]')?.addEventListener('click',()=>{const row=Store.getList('habitLogs').find(r=>r.habit==='早睡早起'&&r.date===todayKey());if(row)Store.deleteRecord('habitLogs',row._id);else Store.addRecord('habitLogs',{habit:'早睡早起',date:todayKey(),weeklyGoal:3,note:'计划页手动记录'});renderContent();});
+    const signalMap={读书:['study','books'],学习:['study','today'],运动:['discipline','fitDaily'],护理:['discipline','skincare']};document.querySelectorAll('[data-signal-goto]').forEach(b=>b.onclick=()=>{const target=signalMap[b.dataset.signalGoto];if(target){selectModule(target[0]);selectTab(target[1]);}});
   }
 
   /* ============================================================
@@ -1115,25 +1133,34 @@ const App = (function () {
    * 运动每日打卡
    * ============================================================ */
   function renderFitnessDaily(tab) {
-    const list = Store.getList(tab);
-    const completed = list.filter(r => r.done).length;
-    const stats = `<div class="stat-row">
-      <div class="stat-card group-work"><div class="stat-value">${list.length}</div><div class="stat-label">运动项目</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${completed}</div><div class="stat-label">已完成</div></div>
-      <div class="stat-card group-work"><div class="stat-value">${list.filter(r => (r.date || '').startsWith(todayKey().slice(0, 7))).length}</div><div class="stat-label">本月</div></div>
-    </div>` + previewHeat(list, 'date', '近 30 天运动打卡');
-    const gallery = renderGallery(tab);
-    if (!list.length) return stats + `<div class="empty-state"><div class="empty-state-icon">🏃</div><div class="empty-state-text">还没有运动记录，点击 + 添加</div></div>`;
-    const items = list.map(r => `<div class="todo-item">
-      <input type="checkbox" class="todo-check" data-toggle="${r._id}" data-key="done" ${r.done ? 'checked' : ''}>
-      <div class="todo-main">
-        <div class="todo-title" style="${r.done ? 'text-decoration:line-through;opacity:.55;' : ''}">${esc(r.item)}</div>
-        <div class="todo-meta">${r.date || ''} · ${r.duration ? esc(r.duration) : '未填时长'} · ${r.calories || 0} kcal</div>
-      </div>
-      <button class="shop-item-del" data-edit="${r._id}">✎</button>
-      <button class="shop-item-del" data-del="${r._id}">×</button>
-    </div>`).join('');
-    return stats + gallery + `<div class="todo-list">${items}</div>`;
+    const list = Store.getList(tab).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')), now=new Date(), monday=new Date(now);monday.setDate(now.getDate()-((now.getDay()+6)%7));monday.setHours(0,0,0,0);const weekStart=dateKey(monday),week=list.filter(r=>r.done!==false&&(r.date||'')>=weekStart),month=list.filter(r=>r.done!==false&&(r.date||'').startsWith(todayKey().slice(0,7))),goal=Math.max(1,Number(Store.getSetting('fitnessWeeklyGoal',3))||3),pct=Math.min(100,Math.round(week.length/goal*100));
+    const durationMinutes=r=>{const t=String(r.duration||'');const n=parseFloat(t)||0;return /小时|hour|h/i.test(t)?Math.round(n*60):Math.round(n);}, minutes=week.reduce((s,r)=>s+durationMinutes(r),0),calories=month.reduce((s,r)=>s+(Number(r.calories)||0),0);
+    const days=Array.from({length:7},(_,i)=>{const d=new Date(monday);d.setDate(d.getDate()+i);const key=dateKey(d),done=list.some(r=>r.date===key&&r.done!==false);return `<span class="${done?'done':''} ${key===todayKey()?'today':''}"><b>${'一二三四五六日'[i]}</b><i>${done?'✓':''}</i></span>`;}).join('');
+    const stats=`<section class="fitness-summary"><div><small>本周运动</small><strong>已完成 ${week.length} 次 · 目标 ${goal} 次</strong><div class="fitness-progress"><i style="width:${pct}%"></i></div><div class="fitness-metrics"><span>本周 <b>${minutes} 分钟</b></span><span>本月 <b>${month.length} 次</b></span><span>消耗 <b>${calories} kcal</b></span></div></div><span class="fitness-ring" style="--pct:${pct*3.6}deg"><b>${week.length}/${goal}</b></span></section><section class="fitness-week"><header><b>本周记录</b><small>${week.length>=goal?'本周目标已完成':`距离目标还差 ${goal-week.length} 次`}</small></header><div>${days}</div></section><button type="button" class="fitness-add" id="fitness-add">＋ 记录一次运动</button>`;
+    const items=list.length?`<section class="fitness-recent"><h3>最近运动</h3>${list.slice(0,12).map(r=>`<article><i>🏃</i><div><b>${esc(r.item||'运动')}</b><small>${esc(r.date||'未填日期')} · ${esc(r.duration||'未填时长')} · ${Number(r.calories)||0} kcal</small></div><span>${r.done===false?'计划':'已完成'}</span><button data-edit="${r._id}">⋯</button></article>`).join('')}</section>`:`<div class="empty-state"><div class="empty-state-icon">🏃</div><div class="empty-state-text">还没有运动记录</div></div>`;
+    return stats+items+`<section class="fitness-tip">保持节奏就好，${week.length>=goal?'本周目标已经达成。':`本周再完成 ${goal-week.length} 次即可达标。`}</section>`;
+  }
+
+  /* ============================================================
+   * 减脂饮食：固定方案为默认，想换口味时从备选食谱中抽取。
+   * ============================================================ */
+  let dietMode='fixed';
+  function renderFitDiet(tab){
+    const all=Store.getList(tab),fixed=all.filter(r=>(r.kind||'固定减脂餐')==='固定减脂餐'),recipes=all.filter(r=>r.kind==='备选食谱'),todayLog=Store.getList('dietLogs').find(r=>r.date===todayKey());
+    const tabs=`<div class="diet-mode"><button data-diet-mode="fixed" class="${dietMode==='fixed'?'active':''}">固定减脂餐</button><button data-diet-mode="ideas" class="${dietMode==='ideas'?'active':''}">换换口味</button></div>`;
+    if(dietMode==='ideas'){
+      const cards=recipes.length?recipes.map(r=>`<article class="diet-card recipe">${r.photo?`<img src="${esc(r.photo)}" alt="">`:'<i>🥗</i>'}<div><small>${esc(r.meal||'正餐')} · ${esc((r.tags||[]).join(' · ')||'备选食谱')}</small><h3>${esc(r.name||r.food||'未命名食谱')}</h3><p>${esc(r.food||'')} ${r.calories?`· ${r.calories} kcal`:''}${r.minutes?` · ${r.minutes} 分钟`:''}</p></div><span class="app-card-ops"><button data-diet-pick="${r._id}">就吃这个</button><button data-edit="${r._id}">编辑</button></span></article>`).join(''):'<div class="empty-state"><div class="empty-state-icon">🥗</div><div class="empty-state-text">点击 + 添加第一份备选食谱</div></div>';
+      return tabs+`<section class="diet-idea-head"><div><small>今天想换个口味？</small><strong id="diet-random-result">从自己的食谱库里选，不改变长期固定方案。</strong></div><button id="diet-random" ${recipes.length?'':'disabled'}>换一个</button></section><div class="diet-list">${cards}</div>`;
+    }
+    const grouped=['早餐','午餐','晚餐','加餐'].map(meal=>{const rows=fixed.filter(r=>(r.meal||'早餐')===meal);if(!rows.length)return'';return `<section class="diet-meal"><header><b>${meal}</b><small>${rows.length} 个固定组合</small></header>${rows.map(r=>`<article>${r.photo?`<img src="${esc(r.photo)}" alt="">`:'<i>🥩</i>'}<div><h3>${esc(r.name||r.food||'固定餐')}</h3><p>${esc(r.food||'')}${r.calories?` · ${r.calories} kcal`:''}${r.protein?` · 蛋白质 ${r.protein}g`:''}</p></div><span class="app-card-ops"><button data-edit="${r._id}">编辑</button></span></article>`).join('')}</section>`;}).join('');
+    return tabs+`<section class="diet-fixed-head"><div><small>今天的稳定方案</small><strong>${todayLog?'今天已确认':'按长期固定组合执行，减少每天重新选择'}</strong></div><button id="diet-confirm" ${todayLog?'disabled':''}>${todayLog?'✓ 已确认':'今天按方案吃了'}</button></section>${grouped||'<div class="empty-state"><div class="empty-state-icon">🥩</div><div class="empty-state-text">点击 + 添加拉沙加、牛腱或鸡胸肉等固定方案</div></div>'}`;
+  }
+  function bindFitDiet(tab){
+    const add=document.getElementById('add-btn');if(add)add.onclick=()=>openForm(tab,null,{kind:dietMode==='ideas'?'备选食谱':'固定减脂餐'});
+    document.querySelectorAll('[data-diet-mode]').forEach(b=>b.onclick=()=>{dietMode=b.dataset.dietMode;renderContent();});
+    const confirmBtn=document.getElementById('diet-confirm');if(confirmBtn)confirmBtn.onclick=()=>{Store.addRecord('dietLogs',{date:todayKey(),mode:'固定减脂餐',status:'已执行'});renderContent();};
+    const random=document.getElementById('diet-random');if(random)random.onclick=()=>{const rows=Store.getList('diet').filter(r=>r.kind==='备选食谱'),pick=rows[Math.floor(Math.random()*rows.length)],el=document.getElementById('diet-random-result');if(pick&&el)el.textContent=`今日推荐：${pick.name||pick.food}`;};
+    document.querySelectorAll('[data-diet-pick]').forEach(b=>b.onclick=()=>{const r=Store.getList('diet').find(x=>x._id===b.dataset.dietPick);if(r){Store.addRecord('dietLogs',{date:todayKey(),mode:'换换口味',recipeId:r._id,name:r.name||r.food,status:'已选择'});renderContent();}});
   }
 
   /* ============================================================
@@ -1143,14 +1170,16 @@ const App = (function () {
     const chart = renderWeightChart();
     const list = Store.getList(tab).slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     if (!list.length) return chart + `<div class="empty-state"><div class="empty-state-icon">⚖️</div><div class="empty-state-text">还没有体重记录，点击 + 添加</div></div>`;
+    const current=list[0],old30=list.find(r=>r.date<=dateKey(new Date(Date.now()-30*86400000)))||list[list.length-1],change=(Number(current.weight)||0)-(Number(old30.weight)||0),goal=Number(current.goal)||0,photos=list.filter(r=>r.photo),photoCompare=photos.length?`<section class="weight-photos"><header><div><small>每周体型照片</small><strong>${photos.length} 次记录</strong></div><span>建议保持相同光线与角度</span></header><div>${[photos[photos.length-1],photos[0]].filter(Boolean).filter((r,i,a)=>i===0||r._id!==a[0]._id).map((r,i)=>`<figure><img src="${esc(r.photo)}" alt="体型记录"><figcaption>${i===0&&photos.length>1?'首次':'最新'} · ${esc(r.date||'')}</figcaption></figure>`).join('')}</div></section>`:`<section class="weight-photo-tip"><b>📷 每周拍一次即可</b><span>在新增体重记录时选择照片；不拍照也不影响趋势。</span></section>`;
+    const summary=`<section class="weight-summary"><span><small>当前体重</small><b>${Number(current.weight).toFixed(1)}kg</b></span><span><small>近30天</small><b class="${change<=0?'down':'up'}">${change>=0?'+':''}${change.toFixed(1)}kg</b></span><span><small>目标体重</small><b>${goal?goal.toFixed(1)+'kg':'未设置'}</b></span><span><small>距离目标</small><b>${goal?Math.abs(Number(current.weight)-goal).toFixed(1)+'kg':'—'}</b></span></section><section class="weight-chart-panel"><header><b>体重趋势</b><small>浅线为记录 · 深线为7次移动平均 · 虚线为目标</small></header>${chart}</section>`;
     const items = list.map(r => `<div class="app-card">
       <div class="app-card-head">
         <span class="app-card-title">${r.date || ''} · ${esc(r.weight)}kg</span>
         <span class="app-card-ops"><button data-edit="${r._id}">编辑</button><button class="danger" data-del="${r._id}">删</button></span>
       </div>
-      <div class="app-card-body"><p>${r.bodyfat ? '体脂 ' + esc(r.bodyfat) : ''} ${r.goal ? '· 目标 ' + r.goal + 'kg' : ''}</p></div>
+      <div class="app-card-body"><p>${r.bodyfat ? '体脂 ' + esc(r.bodyfat) : ''} ${r.goal ? '· 目标 ' + r.goal + 'kg' : ''}${r.photo?' · 📷 有照片':''}</p></div>
     </div>`).join('');
-    return chart + items;
+    return summary+photoCompare+`<section class="weight-history"><h3>历史记录</h3>${items}</section>`;
   }
 
   /* ============================================================
@@ -1677,8 +1706,6 @@ const App = (function () {
         items.push({ icon: '📚', text: r.goal || r.topic || '学习计划', meta: r.date || r.status }));
     Store.getList({ collection: 'moneySubs' }).filter(r => r.nextDate && r.nextDate >= tk).sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || '')).slice(0, 2).forEach(r =>
       items.push({ icon: '💳', text: r.name, meta: r.nextDate }));
-    const habitNames=Array.from(new Set(Store.getList('habitLogs').filter(r=>r.date>=dateKey(new Date(Date.now()-6*86400000))).map(r=>r.habit)));
-    habitNames.filter(h=>!Store.getList('habitLogs').some(r=>r.habit===h&&r.date===tk)).slice(0,2).forEach(h=>items.push({icon:'🔥',text:h,meta:'今日未打卡'}));
     if(Store.getList('daily').length && !Store.getList('daily').some(r=>r.date===tk)) items.push({icon:'🏃',text:'运动',meta:'今日未记录'});
     if(Store.getList('skincare').length && !Store.getList('skincare').some(r=>r.date===tk)) items.push({icon:'🧴',text:'个人护理',meta:'今日未记录'});
     Store.getList('homeCleanings').filter(r=>r.enabled!==false&&daysUntil(maintenanceDue(r))<=Math.max(7,parseInt(r.remindDays)||0)).sort((a,b)=>daysUntil(maintenanceDue(a))-daysUntil(maintenanceDue(b))).slice(0,2).forEach(r=>items.push({icon:'🔧',text:`${r.name} · ${r.task||'设备养护'}`,meta:dueLabel(maintenanceDue(r))}));
@@ -1686,7 +1713,7 @@ const App = (function () {
     Store.getList('homeBills').filter(r=>r.enabled!==false&&daysUntil(r.nextDate||r.dueDate)<=Math.max(3,parseInt(r.remindDays)||0)).sort((a,b)=>daysUntil(a.nextDate||a.dueDate)-daysUntil(b.nextDate||b.dueDate)).slice(0,2).forEach(r=>items.push({icon:'💳',text:`${r.name}待入账`,meta:dueLabel(r.nextDate||r.dueDate)}));
     const ps=Store.getSetting('periodSettings',{});
     if(ps.remind&&ps.cycleStart){const phase=periodPhase(tk,ps),start=new Date(ps.cycleStart+'T00:00:00'),now=new Date(tk+'T00:00:00'),len=parseInt(ps.cycleLen)||28,diff=Math.floor((now-start)/86400000),inCycle=((diff%len)+len)%len,until=len-inCycle;const meta=phase==='经期'?`经期第 ${inCycle+1} 天`:phase==='排卵期'?'预计排卵期':phase==='易孕期'?'易孕期':`预计经期还有 ${until} 天`;if(phase!=='安全期'||until<=3)items.push({icon:'🌸',text:'柚子 · 周期状态',meta});}
-    upcomingImportantEvents(10).filter(ev=>ev.days<=Math.max(7,parseInt(ev.r.remindDays)||0)).slice(0,3).forEach(ev=>items.push({icon:'💝',text:ev.r.name,meta:ev.days===0?'就是今天':ev.days===1?'明天':`还有${ev.days}天`}));
+    upcomingImportantEvents(10).filter(ev=>ev.days<=Math.max(7,parseInt(ev.r.remindDays)||0)).slice(0,3).forEach(ev=>items.push({icon:'🗓️',text:ev.r.name,meta:ev.days===0?'就是今天':ev.days===1?'明天':`还有${ev.days}天`}));
     Store.getList('investHoldings').filter(r=>r.status!=='已清仓'&&r.reviewDate&&daysUntil(r.reviewDate)<=7).slice(0,3).forEach(r=>items.push({icon:'📈',text:`复核 ${r.name} 投资假设`,meta:dueLabel(r.reviewDate)}));
     Store.getList('investChecks').filter(r=>(r.status||'待检查')==='待检查'&&r.date&&daysUntil(r.date)<=Math.max(0,parseInt(r.remindDays)||3)).slice(0,3).forEach(r=>items.push({icon:'🔎',text:r.title,meta:dueLabel(r.date)}));
     if(new Date().getHours()>=20&&!Store.getList('rigongLogs').some(r=>r.date===tk))items.push({icon:'📖',text:'写下今日回望',meta:'为今天温柔收尾'});
@@ -1705,7 +1732,7 @@ const App = (function () {
     evs.forEach(({ r, days }) => {
       const tail = days === 0 ? '就是今天' : days === 1 ? '明天' : `还有 ${days} 天`;
       out.push(`<div class="notice-banner notice-event">
-        <span class="notice-icon">💝</span>
+        <span class="notice-icon">🗓️</span>
         <div class="notice-text"><b>${esc(r.name)}</b> · ${esc(r.type || '重要日期')} · ${tail}</div>
       </div>`);
     });
@@ -2237,6 +2264,7 @@ const App = (function () {
   }
 
   function init() {
+    Store.migrateOnce('dietModesV1',d=>{(d.collections.diet||[]).forEach(r=>{if(!r.kind)r.kind='固定减脂餐';if(!r.name)r.name=r.food||'固定减脂餐';});});
     Store.migrateOnce('shoppingListsV1',d=>{
       const items=(d.collections.items||[]).filter(r=>!r.deletedAt&&!r.listId);if(!items.length)return;
       const now=new Date().toISOString(),id=crypto.randomUUID?crypto.randomUUID():'sl'+Date.now();

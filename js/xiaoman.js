@@ -372,8 +372,7 @@ const Xiaoman = (function () {
     search.addEventListener('keydown', e => {
       if (e.key === 'Escape') hidePanel();
     });
-    // 有提醒时只显示一个安静的小圆点；不再自动唤醒或弹出气泡。
-    try { const brief=App.getReminderSummary&&App.getReminderSummary(); if (brief && brief.count) wrap.classList.add('xm-has-reminder'); } catch(_) {}
+    // 首页已经完整展示今日提醒，小满不再重复显示容易误解的红点。
   }
 
   return { init };

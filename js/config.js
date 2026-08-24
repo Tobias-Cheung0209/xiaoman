@@ -278,7 +278,7 @@ const MODULES = [
   /* ---- 日程自律（自律·成长·蓝，合并运动/形象） ---- */
   {
     id: 'discipline', name: '日程自律', icon: '💪', group: 'work', render: 'tabs',
-    desc: '待办 · 日历 · 习惯 · 运动 · 形象',
+    desc: '待办 · 日历 · 运动 · 形象',
     tabs: [
       {
         id: 'plans', name: '计划', type: 'list', collection: 'plans', special: 'plans',
@@ -294,32 +294,30 @@ const MODULES = [
         ],
       },
       {
-        id: 'habits', name: '习惯热力', type: 'list', collection: 'habitLogs', special: 'habits',
-        fields: [
-          { key: 'habit', label: '习惯', type: 'selectOther', options: ['看书', '早睡早起', '运动打卡', '学习', '其他'], def: '看书' },
-          { key: 'date', label: '日期', type: 'date', required: true },
-          { key: 'weeklyGoal', label: '每周目标次数', type: 'number', def: 3 },
-          { key: 'note', label: '备注', type: 'text' },
-        ],
-      },
-      {
         id: 'fitDaily', name: '运动打卡', type: 'list', collection: 'daily', special: 'fitnessDaily',
         fields: [
           { key: 'date', label: '日期', type: 'date', required: true },
           { key: 'item', label: '运动项目', type: 'text', required: true },
-          { key: 'duration', label: '时长(小时)', type: 'text', ph: '如 2小时 / 1.5小时' },
+          { key: 'duration', label: '时长', type: 'text', ph: '如 30分钟 / 1.5小时' },
           { key: 'calories', label: '消耗(kcal)', type: 'number' },
           { key: 'done', label: '完成', type: 'checkbox' },
           { key: 'photo', label: '运动照', type: 'image' },
         ],
       },
       {
-        id: 'fitDiet', name: '减脂饮食', type: 'list', collection: 'diet',
+        id: 'fitDiet', name: '减脂饮食', type: 'list', collection: 'diet', special: 'fitDiet',
         fields: [
+          { key: 'kind', label: '方案类型', type: 'select', options: ['固定减脂餐', '备选食谱'], def: '固定减脂餐' },
+          { key: 'name', label: '方案名称', type: 'text', required: true },
           { key: 'meal', label: '餐次', type: 'select', options: ['早餐', '午餐', '晚餐', '加餐'], def: '早餐' },
-          { key: 'food', label: '食物', type: 'text', required: true },
+          { key: 'food', label: '食材/组合', type: 'textarea' },
           { key: 'calories', label: '热量(kcal)', type: 'number' },
-          { key: 'note', label: '备注', type: 'text' },
+          { key: 'protein', label: '蛋白质(g)', type: 'number' },
+          { key: 'minutes', label: '准备时间(分钟)', type: 'number' },
+          { key: 'tags', label: '标签', type: 'multicheck', options: ['高蛋白', '低脂', '快手', '适合带饭', '中餐', '西餐'] },
+          { key: 'link', label: '购买/参考链接', type: 'text' },
+          { key: 'photo', label: '照片', type: 'image' },
+          { key: 'note', label: '做法/备注', type: 'textarea' },
         ],
       },
       {
@@ -341,6 +339,7 @@ const MODULES = [
           { key: 'weight', label: '体重(kg)', type: 'number', required: true },
           { key: 'bodyfat', label: '体脂', type: 'text', ph: '可填 22.5% 或 高于25% 等' },
           { key: 'goal', label: '目标体重', type: 'number' },
+          { key: 'photo', label: '每周体型照片（可选）', type: 'image' },
           { key: 'note', label: '备注', type: 'text' },
         ],
       },
