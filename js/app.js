@@ -780,7 +780,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=36',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=36',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=37',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=37',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -1648,8 +1648,11 @@ const App = (function () {
       items.push({ icon: '🛒', text: r.name, meta: r.cat || '购物' }));
     Store.getList({ collection: 'daily' }).filter(r => !r.done).slice(0, 3).forEach(r =>
       items.push({ icon: '🏃', text: r.item, meta: (r.duration || '') + '分' }));
-    Store.getList({ collection: 'studyTasks' }).filter(r => r.status === '进行中').slice(0, 3).forEach(r =>
-      items.push({ icon: '📚', text: r.topic || '学习', meta: '进行中' }));
+    Store.getList({ collection: 'studyTasks' })
+      .filter(r => ['计划','进行中'].includes(r.status) && (!r.date || r.date <= tk))
+      .sort((a,b)=>(a.date||'').localeCompare(b.date||''))
+      .slice(0, 4).forEach(r =>
+        items.push({ icon: '📚', text: r.goal || r.topic || '学习计划', meta: r.date || r.status }));
     Store.getList({ collection: 'moneySubs' }).filter(r => r.nextDate && r.nextDate >= tk).sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || '')).slice(0, 2).forEach(r =>
       items.push({ icon: '💳', text: r.name, meta: r.nextDate }));
     const habitNames=Array.from(new Set(Store.getList('habitLogs').filter(r=>r.date>=dateKey(new Date(Date.now()-6*86400000))).map(r=>r.habit)));
@@ -1667,7 +1670,7 @@ const App = (function () {
     if(new Date().getHours()>=20&&!Store.getList('rigongLogs').some(r=>r.date===tk))items.push({icon:'📖',text:'写下今日回望',meta:'为今天温柔收尾'});
     if (!items.length) return `<div class="reminder-empty">今天没有待办，享受当下吧～</div>`;
     return `<div class="reminder-list">` + items.map(it =>
-      `<div class="reminder-item"><span>${esc(it.icon)}</span><span>${esc(it.text)}</span><small>${esc(it.meta)}</small></div>`
+      `<div class="reminder-item"><span class="reminder-icon">${esc(it.icon)}</span><span class="reminder-text">${esc(it.text)}</span><small>${esc(it.meta)}</small></div>`
     ).join('') + `</div>`;
   }
 
