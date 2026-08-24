@@ -1,6 +1,6 @@
 {
-  "name": "小满则盈",
-  "short_name": "小满则盈",
+  "name": "小满",
+  "short_name": "小满",
   "description": "个人规划、生活、学习与成长工作台",
   "start_url": "index.html",
   "display": "standalone",
