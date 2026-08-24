@@ -300,7 +300,7 @@ const Xiaoman = (function () {
       if (!pressed) return;
       pressed = false;
       clearTimeout(timer); timer = null;
-      if (dragging) { dragging = false; savePos(e.clientX, e.clientY); return; }
+      if (dragging) { dragging = false; clampToSafeViewport(); savePos(); return; }
       if (!moved) toggle();
     });
     doll.addEventListener('contextmenu', e => e.preventDefault());
@@ -315,10 +315,25 @@ const Xiaoman = (function () {
     wrap.style.top = y + 'px';
     wrap.style.right = 'auto';
     wrap.style.bottom = 'auto';
+    clampToSafeViewport();
   }
-  function savePos(clientX, clientY) {
-    const x = Math.round(clientX / window.innerWidth * 1000) / 10;
-    const y = Math.round(clientY / window.innerHeight * 1000) / 10;
+  function safeInsets() {
+    const probe=document.createElement('i');
+    probe.style.cssText='position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+    document.body.appendChild(probe);const s=getComputedStyle(probe),out={top:parseFloat(s.paddingTop)||0,right:parseFloat(s.paddingRight)||0,bottom:parseFloat(s.paddingBottom)||0,left:parseFloat(s.paddingLeft)||0};probe.remove();return out;
+  }
+  function clampToSafeViewport() {
+    if(!wrap||!doll)return;
+    const vv=window.visualViewport,inset=safeInsets(),view={left:(vv?.offsetLeft||0)+Math.max(8,inset.left+6),top:(vv?.offsetTop||0)+Math.max(8,inset.top+6),right:(vv?.offsetLeft||0)+(vv?.width||window.innerWidth)-Math.max(8,inset.right+6),bottom:(vv?.offsetTop||0)+(vv?.height||window.innerHeight)-Math.max(18,inset.bottom+10)};
+    const rect=doll.getBoundingClientRect(),host=wrap.getBoundingClientRect();let dx=0,dy=0;
+    if(rect.left<view.left)dx=view.left-rect.left;else if(rect.right>view.right)dx=view.right-rect.right;
+    if(rect.top<view.top)dy=view.top-rect.top;else if(rect.bottom>view.bottom)dy=view.bottom-rect.bottom;
+    if(dx||dy){wrap.style.left=(host.left+dx)+'px';wrap.style.top=(host.top+dy)+'px';wrap.style.right='auto';wrap.style.bottom='auto';}
+  }
+  function savePos() {
+    const rect=doll.getBoundingClientRect(),vv=window.visualViewport,width=vv?.width||window.innerWidth,height=vv?.height||window.innerHeight,left=vv?.offsetLeft||0,top=vv?.offsetTop||0;
+    const x = Math.round(((rect.left+rect.width/2-left)/width)*1000)/10;
+    const y = Math.round(((rect.top+rect.height/2-top)/height)*1000)/10;
     try { localStorage.setItem(LS_POS, JSON.stringify({ x: x, y: y })); } catch (e) {}
   }
   function applySavedPos() {
@@ -360,8 +375,13 @@ const Xiaoman = (function () {
     // 旧版本的位置记录（底部角落）不再适用，清除
     try { localStorage.removeItem(LS_POS_OLD); } catch (e) {}
     applySavedPos();
+    requestAnimationFrame(clampToSafeViewport);
     initDrag();
     bindDismiss();
+    const keepInBounds=()=>requestAnimationFrame(()=>{clampToSafeViewport();savePos();});
+    window.addEventListener('resize',keepInBounds);
+    window.addEventListener('orientationchange',()=>setTimeout(keepInBounds,220));
+    if(window.visualViewport){window.visualViewport.addEventListener('resize',keepInBounds);window.visualViewport.addEventListener('scroll',keepInBounds);}
 
     menu.querySelectorAll('.xm-menu-item').forEach(b => {
       b.onclick = () => runAction(b.dataset.act);

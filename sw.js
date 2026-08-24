@@ -1,8 +1,8 @@
-const CACHE = 'wb-shell-v46';
+const CACHE = 'wb-shell-v49';
 const FILES = [
-  'index.html','css/style.css?v=46','css/app-v2.css?v=46','js/config.js?v=46','js/travel-areas.js?v=46','js/city-geo.js?v=46','js/store.js?v=46','js/topbar.js?v=46','js/app.js?v=46','js/xiaoman.js?v=46','manifest.webmanifest',
-  'images/xiaoman-sleeping.png?v=46','images/xiaoman-rubbing.png?v=46','images/xiaoman-peek.png?v=46','images/china-map.png?v=46','images/world-map.png?v=46',
-  'icon.svg?v=46','icon-192.png?v=46','icon-512.png?v=46','apple-touch-icon.png?v=46','startup-1170x2532.png?v=46','startup-1290x2796.png?v=46'
+  'index.html','css/style.css?v=49','css/app-v2.css?v=49','js/config.js?v=49','js/travel-areas.js?v=49','js/city-geo.js?v=49','js/store.js?v=49','js/topbar.js?v=49','js/app.js?v=49','js/xiaoman.js?v=49','manifest.webmanifest',
+  'images/xiaoman-sleeping.png?v=49','images/xiaoman-rubbing.png?v=49','images/xiaoman-peek.png?v=49','images/china-map.png?v=49','images/world-map.png?v=49',
+  'icon.svg?v=49','icon-192.png?v=49','icon-512.png?v=49','apple-touch-icon.png?v=49','startup-1170x2532.png?v=49','startup-1290x2796.png?v=49'
 ];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});

@@ -7,6 +7,7 @@ const App = (function () {
   let globalCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let globalCalendarDate = '';
   let globalCalendarFilter = 'all';
+  let activeDateKey = todayKey();
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -371,6 +372,7 @@ const App = (function () {
       'life:people': renderPeople,
       'calendar:overview': renderGlobalCalendar,
       'study:today': renderStudyToday,
+      'study:books': renderBooks,
       'study:history': renderStudyHistory,
       'travel:overview': renderTravelOverview,
       'travel:destinations': renderTravelDest,
@@ -460,6 +462,8 @@ const App = (function () {
     else if (modId === 'discipline' && tab.id === 'plans') bindPlans(tab);
     else if (modId === 'discipline' && tab.id === 'fitDaily') document.getElementById('fitness-add')?.addEventListener('click',()=>openForm(tab,null,{date:todayKey(),done:true}));
     else if (modId === 'discipline' && tab.id === 'fitDiet') bindFitDiet(tab);
+    else if (modId === 'study' && tab.id === 'today') bindLearningCycles(tab,'study');
+    else if (modId === 'study' && tab.id === 'books') bindLearningCycles(tab,'book');
     else if (modId === 'rigong' && tab.id === 'overview') {
       const reflect=document.getElementById('rigong-reflect'), diaryTab=MODULE_MAP.rigong.tabs.find(t=>t.id==='diary');
       if(reflect)reflect.onclick=()=>openForm(diaryTab,null,{date:todayKey()});
@@ -629,13 +633,24 @@ const App = (function () {
   /* ============================================================
    * 学习区（原「学习专区」）
    * ============================================================ */
+  function learningCycle(r){return r.cycle||'不重复';}
+  function learningWeekRange(key){const d=new Date(key+'T00:00:00'),offset=(d.getDay()+6)%7,start=new Date(d);start.setDate(d.getDate()-offset);const end=new Date(start);end.setDate(start.getDate()+6);return{start:dateKey(start),end:dateKey(end)};}
+  function learningCycleState(r,key) {
+    const cycle=learningCycle(r),dates=Array.isArray(r.completionDates)?r.completionDates:[],started=!r.date||r.date<=key;
+    if(cycle==='每天')return{due:started&&!dates.includes(key),count:dates.includes(key)?1:0,target:1,label:'每天'};
+    const match=cycle.match(/^每周(\d)次$/);if(match){const target=Number(match[1]),range=learningWeekRange(key),count=dates.filter(d=>d>=range.start&&d<=range.end).length;return{due:started&&count<target,count,target,label:`本周 ${count}/${target}`};}
+    return{due:started&&r.status!=='已完成'&&r.status!=='读完',count:r.status==='已完成'||r.status==='读完'?1:0,target:1,label:r.date||'单次'};
+  }
+  function learningDoneOn(r,key){return (r.completionDates||[]).includes(key)||(learningCycle(r)==='不重复'&&['已完成','读完'].includes(r.status)&&r.completedDate===key);}
+  function completeLearningCycle(collection,id,kind){const r=Store.getList(collection).find(x=>x._id===id);if(!r)return;const cycle=learningCycle(r),tk=todayKey();if(cycle==='不重复'){Store.updateRecord(collection,id,{status:kind==='book'?'读完':'已完成',completedDate:tk});}else{const dates=Array.from(new Set([...(Array.isArray(r.completionDates)?r.completionDates:[]),tk])).sort();Store.updateRecord(collection,id,{completionDates:dates,lastCompletedDate:tk});}renderContent();}
+  function bindLearningCycles(tab,kind){document.querySelectorAll('[data-learning-complete]').forEach(b=>b.onclick=()=>completeLearningCycle(Store.keyOf(tab),b.dataset.learningComplete,kind));}
   function renderStudyToday(tab) {
     const all = Store.getList(tab);
     const tk = todayKey();
-    const today = all.filter(r => r.date === tk);
-    const active = all.filter(r => r.status === '进行中' || r.status === '计划');
+    const today = all.filter(r => r.date === tk||(r.completionDates||[]).includes(tk));
+    const active = all.filter(r => ['进行中','计划'].includes(r.status)&&learningCycleState(r,tk).due);
     const totalH = today.reduce((s, r) => s + (parseFloat(r.duration) || 0), 0);
-    const focus=today.length?today:active,done=focus.filter(r=>r.status==='已完成').length,pct=focus.length?Math.round(done/focus.length*100):0,current=active[0];
+    const focus=today.length?today:active,done=focus.filter(r=>learningDoneOn(r,tk)||r.status==='已完成').length,pct=focus.length?Math.round(done/focus.length*100):0,current=active[0];
     const stats = `<section class="study-overview"><div class="study-overview-head"><div><small>📘 今日学习</small><strong>${done} / ${focus.length} 项完成</strong></div><b>${pct}%</b></div><div class="study-progress"><i style="width:${pct}%"></i></div><div class="study-overview-meta"><span>已学习 <b>${Math.round(totalH*10)/10}h</b></span><span>进行中 <b>${active.length}</b></span></div>${current?`<button type="button" data-edit="${current._id}" class="study-current"><small>正在进行</small><b>${esc(current.topic||'学习')} · ${esc(current.goal||'继续积累')}</b></button>`:'<div class="study-current empty"><small>今天还没有安排学习</small><b>保持一点输入，也算向前一步</b></div>'}</section>`;
     const empty = !active.length ? `<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">还没有学习任务，点击 + 添加</div></div>` : '';
     const cards = active.map(r => `<div class="app-card">
@@ -644,11 +659,19 @@ const App = (function () {
         ${cardOpsMenu(r._id)}
       </div>
       <div class="app-card-body">
-        <p><span class="tag">${esc(r.status)}</span> ${r.duration ? '已学 ' + r.duration + ' 小时' : ''} ${r.ref ? '· 资料 ' + esc(r.ref) : ''}</p>
+        <p><span class="tag">${esc(r.status)}</span> <span class="tag cycle">${esc(learningCycleState(r,tk).label)}</span> ${r.duration ? '计划 ' + r.duration + ' 小时' : ''} ${r.ref ? '· 资料 ' + esc(r.ref) : ''}</p>
         ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}
+        <button type="button" class="learning-complete" data-learning-complete="${r._id}">✓ 完成本次</button>
       </div>
     </div>`).join('');
     return stats + empty + cards;
+  }
+
+  function renderBooks(tab){
+    const list=Store.getList(tab).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')),tk=todayKey(),active=list.filter(r=>(r.status||'在读')!=='读完'),due=active.filter(r=>learningCycleState(r,tk).due);
+    const head=`<section class="study-overview books"><div class="study-overview-head"><div><small>📚 阅读计划</small><strong>${due.length?`今天还有 ${due.length} 项阅读`:'今天的阅读计划已完成'}</strong></div><b>${active.length}</b></div><div class="study-overview-meta"><span>在读 <b>${active.length}</b></span><span>累计记录 <b>${list.reduce((s,r)=>s+(r.completionDates||[]).length,0)}</b></span></div></section>`;
+    if(!list.length)return head+'<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">还没有读书计划，点击 + 添加</div></div>';
+    return head+list.map(r=>{const state=learningCycleState(r,tk),done=(r.status||'在读')==='读完';return `<div class="app-card book-plan ${done?'done':''}"><div class="app-card-head"><span class="app-card-title">${esc(r.book)}</span>${cardOpsMenu(r._id)}</div><div class="app-card-body"><p><span class="tag">${esc(r.status||'在读')}</span> <span class="tag cycle">${esc(state.label)}</span>${r.progress?' · '+esc(r.progress):''}</p>${r.note?`<p>${esc(r.note)}</p>`:''}${!done&&state.due?`<button type="button" class="learning-complete" data-learning-complete="${r._id}">✓ 完成今日阅读</button>`:!done?'<small class="learning-done-tip">本周期目标已完成</small>':''}</div></div>`;}).join('');
   }
 
   function studyWeeklySummary() {
@@ -814,7 +837,7 @@ const App = (function () {
     ];
     const stats = `<section class="travel-dashboard"><div class="travel-dashboard-head"><div><small>我的旅行足迹</small><strong>已探索 ${visited} / ${total} 个目的地</strong></div><b>${pct}%</b></div><div class="travel-progress"><i style="width:${pct}%"></i></div><div class="travel-status-grid">${statusCards.map(([status,icon,color,summary]) => `<button type="button" class="travel-status-card" data-goto="travel" data-tab-target="destinations" style="--travel-status:${color}" aria-label="查看${status}目的地"><span>${icon}</span><strong>${groups[status].length}</strong><small>${status}</small><em>${esc(summary)}</em></button>`).join('')}</div></section>`;
     const imageMap = (title, src, box, pins) => `<div class="travel-map" data-map-title="${title}"><div class="travel-map-head"><div class="travel-map-title">${title}</div><button type="button" class="travel-map-expand" aria-label="放大${title}地图">⛶ 放大</button></div><div class="travel-map-viewport"><div class="travel-map-stage"><img src="${src}" alt="${title}地图">${pins.map(p=>{ const left=((p.lon-box.lonMin)/(box.lonMax-box.lonMin)*100), top=(1-(p.lat-box.latMin)/(box.latMax-box.latMin))*100, shift=(p.offset||0)*7; return `<button type="button" class="map-pin" style="left:calc(${left.toFixed(2)}% + ${shift}px);top:calc(${top.toFixed(2)}% + ${shift}px);--pin-color:${p.color}" title="${esc(p.city)} · ${esc(p.status)}" aria-label="${esc(p.city)}，${esc(p.status)}" aria-expanded="false" data-city="${esc(p.city)}" data-canonical="${esc(p.canonical)}" data-status="${esc(p.status)}" data-date="${esc(p.goDate)}" data-days="${esc(p.travelDays)}" data-spots="${esc(p.spots)}" data-food="${esc(p.food)}"><span></span></button>`; }).join('')}</div><div class="travel-pin-card" hidden><button type="button" class="travel-pin-close" aria-label="关闭地点信息">×</button><strong data-pin-city></strong><span data-pin-location></span><em data-pin-status></em><div data-pin-details></div></div></div><div class="travel-map-controls" hidden><button type="button" data-map-zoom="out" aria-label="缩小地图">−</button><button type="button" data-map-reset>复位</button><button type="button" data-map-zoom="in" aria-label="放大地图">＋</button><button type="button" data-map-close>关闭</button></div></div>`;
-    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=46',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=46',worldBox,worldPins)}</div>`;
+    const maps = `<div class="travel-maps">${imageMap('中国','images/china-map.png?v=49',chinaBox,chinaPins)}${imageMap('世界','images/world-map.png?v=49',worldBox,worldPins)}</div>`;
     const note = noGeo.length ? `<div class="travel-nogeo">以下地点无法自动识别，请编辑记录补充经纬度：${esc(noGeo.join('、'))}</div>` : '';
     const hint = !list.length ? `<div class="empty-state"><div class="empty-state-icon">🗺️</div><div class="empty-state-text">还没有旅行记录，去「目的地」添加吧</div></div>` : '';
     return stats + maps + note + hint;
@@ -976,7 +999,8 @@ const App = (function () {
       const d=dateKey(cursor); plans.filter(r=>r.status!=='完成'&&r.date&&planOccurs(r,d)).forEach(r=>add(d,r.title,'plan','discipline','plans','plans',r._id,{time:r.time||'',priority:r.priority||'中'}));
     }
     Store.getList('todos').filter(r=>r.status!=='完成').forEach(r=>add(r.due,r.item,'work','jikui','todos','todos',r._id,{priority:r.priority||'中'}));
-    Store.getList('studyTasks').filter(r=>r.status!=='已完成').forEach(r=>add(r.date,r.goal||r.topic||'学习','study','study','today','studyTasks',r._id));
+    Store.getList('studyTasks').filter(r=>r.status!=='已完成').forEach(r=>{const cycle=learningCycle(r),title=r.goal||r.topic||'学习';if(cycle==='不重复')add(r.date,title,'study','study','today','studyTasks',r._id);else if(cycle==='每天'){for(let d=new Date((r.date>from?r.date:from)+'T00:00:00'),end=new Date(to+'T00:00:00');d<=end;d.setDate(d.getDate()+1))add(dateKey(d),title,'study','study','today','studyTasks',r._id,{recurring:true});}else{for(let d=new Date(from+'T00:00:00'),end=new Date(to+'T00:00:00');d<=end;d.setDate(d.getDate()+1))if(d.getDay()===1&&dateKey(d)>=r.date)add(dateKey(d),`${title} · ${cycle}`,'study','study','today','studyTasks',r._id,{recurring:true});}});
+    Store.getList('bookLogs').filter(r=>(r.status||'在读')!=='读完').forEach(r=>{const cycle=learningCycle(r),title=`阅读《${r.book||'未命名'}》`;if(cycle==='不重复')add(r.date,title,'study','study','books','bookLogs',r._id);else if(cycle==='每天'){for(let d=new Date((r.date>from?r.date:from)+'T00:00:00'),end=new Date(to+'T00:00:00');d<=end;d.setDate(d.getDate()+1))add(dateKey(d),title,'study','study','books','bookLogs',r._id,{recurring:true});}else{for(let d=new Date(from+'T00:00:00'),end=new Date(to+'T00:00:00');d<=end;d.setDate(d.getDate()+1))if(d.getDay()===1&&dateKey(d)>=r.date)add(dateKey(d),`${title} · ${cycle}`,'study','study','books','bookLogs',r._id,{recurring:true});}});
     if(todayKey()>=from&&todayKey()<=to){
       const recent=dateKey(new Date(Date.now()-6*86400000)),habits=Array.from(new Set(Store.getList('habitLogs').filter(r=>r.date>=recent).map(r=>r.habit)));
       habits.filter(h=>!Store.getList('habitLogs').some(r=>r.habit===h&&r.date===todayKey())).forEach(h=>add(todayKey(),h,'habit','discipline','habits','habitLogs',null));
@@ -1007,7 +1031,7 @@ const App = (function () {
     const tk=todayKey(), rows=[],push=(date,title,category,collection,id)=>{if(date&&date<tk)rows.push({date,title:title||'未命名事项',category,collection,id});};
     Store.getList('plans').filter(r=>r.status!=='完成'&&(!r.repeat||r.repeat==='不重复')).forEach(r=>push(r.date,r.title,r.domain||'计划','plans',r._id));
     Store.getList('todos').filter(r=>r.status!=='完成').forEach(r=>push(r.due,r.item,'工作','todos',r._id));
-    Store.getList('studyTasks').filter(r=>r.status!=='已完成').forEach(r=>push(r.date,r.goal||r.topic,'学习','studyTasks',r._id));
+    Store.getList('studyTasks').filter(r=>r.status!=='已完成'&&learningCycle(r)==='不重复').forEach(r=>push(r.date,r.goal||r.topic,'学习','studyTasks',r._id));
     Store.getList('investChecks').filter(r=>(r.status||'待检查')==='待检查').forEach(r=>push(r.date,r.title,'投资','investChecks',r._id));
     Store.getList('homeCleanings').filter(r=>r.enabled!==false).forEach(r=>push(maintenanceDue(r),r.name,'居家养护','homeCleanings',r._id));
     Store.getList('homeStocks').filter(r=>r.enabled!==false).forEach(r=>push(stockDue(r),r.name,'居家库存','homeStocks',r._id));
@@ -1116,8 +1140,8 @@ const App = (function () {
     const unscheduled=plans.filter(r=>!r.date&&r.status!=='完成');
     const selected=new Date(selectedPlanDate+'T00:00:00'),week='日一二三四五六'[selected.getDay()];
     const manualSleep=Store.getList('habitLogs').find(r=>r.habit==='早睡早起'&&r.date===tk), signals=[
-      ['📚','读书',Store.getList('bookLogs').some(r=>r.date===tk),'自动'],
-      ['🎓','学习',Store.getList('studyTasks').some(r=>r.date===tk),'自动'],
+      ['📚','读书',Store.getList('bookLogs').some(r=>r.date===tk||(r.completionDates||[]).includes(tk)),'自动'],
+      ['🎓','学习',Store.getList('studyTasks').some(r=>r.date===tk||(r.completionDates||[]).includes(tk)),'自动'],
       ['🏃','运动',Store.getList('daily').some(r=>r.date===tk&&r.done!==false),'自动'],
       ['🧴','护理',Store.getList('skincare').some(r=>r.date===tk),'自动'],
       ['🌙','早睡',!!manualSleep,'手动']
@@ -1738,20 +1762,21 @@ const App = (function () {
   function buildReminders() {
     const tk = todayKey();
     const items = [];
-    Store.getList({ collection: 'plans' }).filter(r => r.status !== '完成' && (!r.date || planOccurs(r, tk) || r.date < tk)).slice(0, 4).forEach(r =>
+    Store.getList({ collection: 'plans' }).filter(r => r.status !== '完成' && (!r.date || planOccurs(r, tk) || (r.date < tk&&(!r.repeat||r.repeat==='不重复')))).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).slice(0, 4).forEach(r =>
       items.push({ icon: '📋', text: r.title, meta: r.date || '待办' }));
-    Store.getList({ collection: 'todos' }).filter(r => r.status !== '完成').slice(0, 3).forEach(r =>
+    Store.getList({ collection: 'todos' }).filter(r => r.status !== '完成' && (!r.due || r.due <= tk)).sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0, 3).forEach(r =>
       items.push({ icon: '🏢', text: r.item, meta: r.due || '待办' }));
     Store.getList({ collection: 'items' }).filter(r => r.status === '未买').slice(0, 3).forEach(r =>
       items.push({ icon: '🛒', text: r.name, meta: r.cat || '购物' }));
-    Store.getList({ collection: 'daily' }).filter(r => !r.done).slice(0, 3).forEach(r =>
+    Store.getList({ collection: 'daily' }).filter(r => r.date === tk && !r.done).slice(0, 3).forEach(r =>
       items.push({ icon: '🏃', text: r.item, meta: (r.duration || '') + '分' }));
     Store.getList({ collection: 'studyTasks' })
-      .filter(r => ['计划','进行中'].includes(r.status) && (!r.date || r.date <= tk))
+      .filter(r => ['计划','进行中'].includes(r.status) && learningCycleState(r,tk).due)
       .sort((a,b)=>(a.date||'').localeCompare(b.date||''))
       .slice(0, 4).forEach(r =>
-        items.push({ icon: '📚', text: r.goal || r.topic || '学习计划', meta: r.date || r.status }));
-    Store.getList({ collection: 'moneySubs' }).filter(r => r.nextDate && r.nextDate >= tk).sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || '')).slice(0, 2).forEach(r =>
+        items.push({ icon: '📚', text: r.goal || r.topic || '学习计划', meta: learningCycleState(r,tk).label }));
+    Store.getList('bookLogs').filter(r=>(r.status||'在读')!=='读完'&&learningCycleState(r,tk).due).slice(0,3).forEach(r=>items.push({icon:'📖',text:`阅读《${r.book}》`,meta:learningCycleState(r,tk).label}));
+    Store.getList({ collection: 'moneySubs' }).filter(r => r.nextDate && daysUntil(r.nextDate) >= 0 && daysUntil(r.nextDate) <= Math.max(7,parseInt(r.remindDays)||0)).sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || '')).slice(0, 2).forEach(r =>
       items.push({ icon: '💳', text: r.name, meta: r.nextDate }));
     if(Store.getList('daily').length && !Store.getList('daily').some(r=>r.date===tk)) items.push({icon:'🏃',text:'运动',meta:'今日未记录'});
     if(Store.getList('skincare').length && !Store.getList('skincare').some(r=>r.date===tk)) items.push({icon:'🧴',text:'个人护理',meta:'今日未记录'});
@@ -2311,6 +2336,7 @@ const App = (function () {
   }
 
   function init() {
+    Store.migrateOnce('learningCyclesV1',d=>{(d.collections.studyTasks||[]).forEach(r=>{if(!r.cycle)r.cycle='不重复';if(!Array.isArray(r.completionDates))r.completionDates=[];});(d.collections.bookLogs||[]).forEach(r=>{if(!r.cycle)r.cycle='不重复';if(!r.status)r.status='读完';if(!Array.isArray(r.completionDates))r.completionDates=r.date?[r.date]:[];});});
     Store.migrateOnce('dietModesV1',d=>{(d.collections.diet||[]).forEach(r=>{if(!r.kind)r.kind='固定减脂餐';if(!r.name)r.name=r.food||'固定减脂餐';});});
     Store.migrateOnce('shoppingListsV1',d=>{
       const items=(d.collections.items||[]).filter(r=>!r.deletedAt&&!r.listId);if(!items.length)return;
@@ -2333,6 +2359,14 @@ const App = (function () {
     }
     window.addEventListener('resize', syncTopbarH);
     window.addEventListener('orientationchange', () => setTimeout(syncTopbarH, 200));
+    const refreshDateSensitiveView=force=>{
+      const next=todayKey(),dateChanged=next!==activeDateKey;activeDateKey=next;
+      if((force||dateChanged)&&['home','calendar','discipline','rigong'].includes(state.module))renderContent();
+    };
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshDateSensitiveView(true);});
+    window.addEventListener('focus',()=>refreshDateSensitiveView(true));
+    window.addEventListener('storage',()=>refreshDateSensitiveView(true));
+    setInterval(()=>refreshDateSensitiveView(false),60000);
   }
 
   return { init, selectModule, selectTab, openForm, openSettings, openQuickAdd, getReminderSummary, focusTodayReminders };
