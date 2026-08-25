@@ -286,6 +286,7 @@ const MODULES = [
     tabs: [
       { id: 'light', name: '轻食减脂', type: 'list', special: 'kitchenLight', fields: [] },
       { id: 'cooking', name: '人间烟火', type: 'list', special: 'kitchenCooking', fields: [] },
+      { id: 'gallery', name: '食光留影', type: 'list', special: 'kitchenGallery', fields: [] },
     ],
   },
 
