@@ -141,7 +141,10 @@
   font-size: 14px;
   padding: 8px 0;
   border-bottom: 1px solid rgba(230,235,245,.6);
+  width:100%; border-left:0; border-right:0; border-top:0; background:transparent; color:inherit; cursor:pointer; font-family:inherit;
 }
+.reminder-item:active { background:rgba(110,184,255,.08); }
+.reminder-item small i { color:var(--work-deep);font-style:normal;font-size:16px;margin-left:4px; }
 .reminder-item:last-child { border-bottom: none; }
 .reminder-item input[type="checkbox"] {
   width: 20px; height: 20px;

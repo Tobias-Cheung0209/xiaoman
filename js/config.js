@@ -379,7 +379,7 @@ const MODULES = [
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'type', label: '类型', type: 'selectOther', options: ['现金', '储蓄', '投资', '其他'], def: '储蓄' },
-          { key: 'owner', label: '资产归属', type: 'select', options: ['股市投资', '德国账户', '副业资金', '其他资产'], def: '德国账户' },
+          { key: 'owner', label: '资产归属', type: 'select', options: ['股市投资', '副业资金', '其他资产'], def: '股市投资' },
           { key: 'amount', label: '金额', type: 'number', required: true },
           { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
           { key: 'note', label: '备注', type: 'text' },
@@ -388,9 +388,10 @@ const MODULES = [
       {
         id: 'flows', name: '收支流水', type: 'list', collection: 'flows', special: 'moneyFlows',
         fields: [
-          { key: 'account', label: '账户', type: 'text' },
-          { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
-          { key: 'direction', label: '方向', type: 'select', options: ['收入', '支出'], def: '支出' },
+          { key: 'transactionType', label: '流水类型', type: 'select', options: ['收入', '支出', '信用卡还款'], def: '支出' },
+          { key: 'accountRegion', label: '所属账户', type: 'select', options: ['德国账户', '国内账户'], def: '德国账户' },
+          { key: 'paymentMethod', label: '支付方式', type: 'select', options: ['借记卡', '信用卡'], def: '借记卡' },
+          { key: 'currency', label: '币种（随账户自动设置）', type: 'select', options: MONEY_CURRENCIES, def: '€' },
           { key: 'category', label: '分类', type: 'select', options: MONEY_CATEGORIES, def: '日常开销' },
           { key: 'categoryDetail', label: '其他明细', type: 'text' },
           { key: 'budgetStatus', label: '预算状态', type: 'select', options: ['自动匹配', '预算内', '预算外'], def: '自动匹配' },
@@ -427,10 +428,11 @@ const MODULES = [
         fields: [
           { key: 'name', label: '名称', type: 'text', required: true },
           { key: 'amount', label: '金额', type: 'number', required: true },
+          { key: 'accountRegion', label: '扣款账户', type: 'select', options: ['德国账户', '国内账户'], def: '德国账户' },
+          { key: 'paymentMethod', label: '支付方式', type: 'select', options: ['借记卡', '信用卡'], def: '借记卡' },
           { key: 'currency', label: '币种', type: 'select', options: MONEY_CURRENCIES, def: '€' },
           { key: 'cycle', label: '周期', type: 'select', options: ['周', '月', '季', '年'], def: '月' },
           { key: 'nextDate', label: '下次日期', type: 'date' },
-          { key: 'method', label: '支付方式', type: 'text' },
         ],
       },
     ],

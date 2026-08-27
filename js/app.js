@@ -241,6 +241,9 @@ const App = (function () {
       const preview=document.createElement('div'); preview.className='predict'; preview.id='flow-budget-preview'; document.getElementById('rec-form').prepend(preview);
       const updatePreview=()=>{const cat=document.getElementById('f_category')?.value,amount=parseFloat(document.getElementById('f_amount')?.value)||0,currency=document.getElementById('f_currency')?.value||'€',budgets=Store.getList('moneyBudget'),b=budgets.find(x=>x.cat===cat)||budgets.find(x=>x.cat==='总预算');if(!b){preview.textContent='此分类暂无预算，将计入「无预算」';return;}const used=budgetSpent(b,Store.getList('flows')),limit=baseAmount(b.limit??b.monthlyLimit,b.currency);preview.textContent=`命中 ${b.cat} ${b.period||'月'}预算：已用 ${baseSymbol()}${used.toFixed(0)}，本笔后约 ${baseSymbol()}${(used+baseAmount(amount,currency)).toFixed(0)} / ${baseSymbol()}${limit.toFixed(0)}`;};
       ['f_category','f_amount','f_currency'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',updatePreview);}); updatePreview();
+      const region=document.getElementById('f_accountRegion'),currency=document.getElementById('f_currency'),kind=document.getElementById('f_transactionType'),method=document.getElementById('f_paymentMethod');
+      const syncFlowFields=()=>{if(region&&currency)currency.value=region.value==='国内账户'?'¥':'€';if(method&&kind)method.closest('.form-row').style.display=kind.value==='收入'?'none':'';updatePreview();};
+      region?.addEventListener('change',syncFlowFields);kind?.addEventListener('change',syncFlowFields);syncFlowFields();
     }
     // 图片上传压缩
     tab.fields.filter(f => f.type === 'image').forEach(f => {
@@ -283,6 +286,12 @@ const App = (function () {
       const missing = tab.fields.find(f => f.required && (obj[f.key] == null || String(obj[f.key]).trim() === ''));
       if (missing) { alert('请填写：' + missing.label); return; }
       const collection=Store.keyOf(tab);
+      if(collection==='flows'){
+        obj.direction=obj.transactionType==='收入'?'收入':obj.transactionType==='支出'?'支出':'还款';
+        obj.currency=obj.accountRegion==='国内账户'?'¥':'€';
+        obj.account=`${obj.accountRegion} · ${obj.transactionType==='支出'?(obj.paymentMethod||'借记卡'):obj.transactionType}`;
+        obj.accountTracking=true;
+      }
       if (rec&&['todos','plans'].includes(collection)&&obj.status!==rec.status) obj.completedDate=obj.status==='完成'?todayKey():'';
       let saved;
       if (editId) { trackScheduleChange(tab, rec, obj); Store.updateRecord(tab, editId, obj); saved = Store.getList(tab).find(r => r._id === editId); }
@@ -558,8 +567,8 @@ const App = (function () {
   function openProcurementSettlement(listId){
     const list=Store.getList('shoppingLists').find(r=>r._id===listId);if(!list||procurementFlow(list))return;
     const defaultCategory=list.category==='买菜食品'?'餐饮':list.category==='其他'?'日常开销':'购物';
-    openModal('采购结算',`<form id="procurement-form"><div class="shop-book-note"><b>${esc(list.title)}</b><span>整张清单只生成一笔资金流水。</span></div><div class="form-row"><label>实际支付<i>*</i></label><input id="procurement-amount" type="number" min="0.01" step="any" required autofocus></div><div class="form-row"><label>币种</label><select id="procurement-currency">${MONEY_CURRENCIES.map(c=>`<option ${c==='€'?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-row"><label>分类</label><select id="procurement-category">${MONEY_CATEGORIES.map(c=>`<option ${c===defaultCategory?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-row"><label>日期</label><input id="procurement-date" type="date" value="${todayKey()}" required></div><div class="form-actions"><button type="button" class="btn-secondary" id="procurement-cancel">取消</button><button class="btn-primary">确认结算</button></div></form>`);
-    document.getElementById('procurement-cancel').onclick=closeModal;document.getElementById('procurement-form').onsubmit=e=>{e.preventDefault();if(procurementFlow(list))return;const amount=Number(document.getElementById('procurement-amount').value);if(!(amount>0))return;const currency=document.getElementById('procurement-currency').value,category=document.getElementById('procurement-category').value,date=document.getElementById('procurement-date').value;const flow=Store.addRecord('flows',{account:'',currency,direction:'支出',category,categoryDetail:list.category||'',budgetStatus:'自动匹配',amount,date,note:`采购结算 · ${list.title}`,sourceType:'shoppingList',sourceId:list._id});Store.updateRecord('shoppingLists',list._id,{status:'已结算',flowId:flow._id,settledAt:new Date().toISOString()});closeModal();renderContent();};
+    openModal('采购结算',`<form id="procurement-form"><div class="shop-book-note"><b>${esc(list.title)}</b><span>整张清单只生成一笔资金流水。</span></div><div class="form-row"><label>实际支付<i>*</i></label><input id="procurement-amount" type="number" min="0.01" step="any" required autofocus></div><div class="form-row"><label>所属账户</label><select id="procurement-region"><option>德国账户</option><option>国内账户</option></select></div><div class="form-row"><label>支付方式</label><select id="procurement-method"><option>借记卡</option><option>信用卡</option></select></div><div class="form-row"><label>分类</label><select id="procurement-category">${MONEY_CATEGORIES.map(c=>`<option ${c===defaultCategory?'selected':''}>${c}</option>`).join('')}</select></div><div class="form-row"><label>日期</label><input id="procurement-date" type="date" value="${todayKey()}" required></div><div class="form-actions"><button type="button" class="btn-secondary" id="procurement-cancel">取消</button><button class="btn-primary">确认结算</button></div></form>`);
+    document.getElementById('procurement-cancel').onclick=closeModal;document.getElementById('procurement-form').onsubmit=e=>{e.preventDefault();if(procurementFlow(list))return;const amount=Number(document.getElementById('procurement-amount').value);if(!(amount>0))return;const accountRegion=document.getElementById('procurement-region').value,paymentMethod=document.getElementById('procurement-method').value,currency=accountRegion==='国内账户'?'¥':'€',category=document.getElementById('procurement-category').value,date=document.getElementById('procurement-date').value;const flow=Store.addRecord('flows',{account:`${accountRegion} · ${paymentMethod}`,accountRegion,paymentMethod,transactionType:'支出',accountTracking:true,currency,direction:'支出',category,categoryDetail:list.category||'',budgetStatus:'自动匹配',amount,date,note:`采购结算 · ${list.title}`,sourceType:'shoppingList',sourceId:list._id});Store.updateRecord('shoppingLists',list._id,{status:'已结算',flowId:flow._id,settledAt:new Date().toISOString()});closeModal();renderContent();};
   }
 
   /* ============================================================
@@ -1420,6 +1429,14 @@ const App = (function () {
       <span class="money-bar-label">${esc(label)}</span><span class="money-bar-track"><i class="tone-${tone}" style="width:${pct.toFixed(1)}%"></i></span>
       <span class="money-bar-value">${suffix?.text || `${baseSymbol()}${compactMoney(value)}`}</span></button>`;
   }
+  const MONEY_ACCOUNT_DEFS=[{region:'德国账户',currency:'€',icon:'🇩🇪'},{region:'国内账户',currency:'¥',icon:'🇨🇳'}];
+  function moneyAccountState(region){
+    const def=MONEY_ACCOUNT_DEFS.find(x=>x.region===region)||MONEY_ACCOUNT_DEFS[0],base=Store.getList('moneyAccounts').find(r=>r.region===region)||{};
+    let bank=Number(base.bankBalance)||0,debt=Number(base.creditDebt)||0;
+    Store.getList('flows').filter(r=>r.accountTracking===true&&r.accountRegion===region).forEach(r=>{const n=Number(r.amount)||0,type=r.transactionType||(r.direction==='收入'?'收入':'支出');if(type==='收入')bank+=n;else if(type==='信用卡还款'){bank-=n;debt=Math.max(0,debt-n);}else if((r.paymentMethod||'借记卡')==='信用卡')debt+=n;else bank-=n;});
+    return {...def,...base,bank,debt,net:bank-debt};
+  }
+  function allMoneyAccountStates(){return MONEY_ACCOUNT_DEFS.map(x=>moneyAccountState(x.region));}
   function renderMoneyOverview(tab) {
     const assets = Store.getList({ collection: 'moneyAssets' });
     const flows = Store.getList({ collection: 'flows' });
@@ -1427,7 +1444,8 @@ const App = (function () {
     const month = flows.filter(r => (r.date || '').startsWith(ym));
     const inc = month.filter(r => r.direction === '收入').reduce((s, r) => s + baseAmount(r.amount,r.currency), 0);
     const exp = month.filter(r => r.direction === '支出').reduce((s, r) => s + baseAmount(r.amount,r.currency), 0);
-    const assetTotal = assets.reduce((s, r) => s + baseAmount(r.amount,r.currency), 0), bs = baseSymbol();
+    const accountStates=allMoneyAccountStates(),accountTotal=accountStates.reduce((s,r)=>s+baseAmount(r.net,r.currency),0);
+    const assetTotal = assets.filter(r=>!r.accountMigrated).reduce((s, r) => s + baseAmount(r.amount,r.currency), 0)+accountTotal, bs = baseSymbol();
     const subs = Store.getList({ collection: 'moneySubs' });
     const fixedMonthly = subs.reduce((sum, r) => {
       const amount = baseAmount(r.amount, r.currency);
@@ -1437,10 +1455,10 @@ const App = (function () {
       return sum+amount*({'每月':1,'每季度':1/3,'每半年':1/6,'每年':1/12}[r.cycle||'每月']||1);
     },0);
     const inferOwner=r=>r.owner||(/股|证券|投资/i.test(`${r.name||''}${r.type||''}`)?'股市投资':/副业|公司|项目/i.test(`${r.name||''}${r.type||''}`)?'副业资金':(r.currency||'€')==='€'?'德国账户':'其他资产');
-    const ownerTotals={'股市投资':0,'德国账户':0,'副业资金':0,'其他资产':0};
-    assets.forEach(r=>ownerTotals[inferOwner(r)]=(ownerTotals[inferOwner(r)]||0)+baseAmount(r.amount,r.currency));
+    const ownerTotals={'股市投资':0,'德国账户':baseAmount(accountStates[0].net,'€'),'国内账户':baseAmount(accountStates[1].net,'¥'),'副业资金':0,'其他资产':0};
+    assets.filter(r=>!r.accountMigrated).forEach(r=>ownerTotals[inferOwner(r)]=(ownerTotals[inferOwner(r)]||0)+baseAmount(r.amount,r.currency));
     const nativeByOwner=owner=>nativeMoney(assets.filter(r=>inferOwner(r)===owner));
-    const assetSummary=`<button class="money-asset-summary" data-goto="money" data-tab-target="assets"><header><span>资产总额</span><i>›</i></header><div><span>股市投资</span><b>${esc(nativeByOwner('股市投资'))}</b></div><div><span>德国账户</span><b>${esc(nativeByOwner('德国账户'))}</b></div><div><span>副业资金</span><b>${esc(nativeByOwner('副业资金'))}</b></div>${ownerTotals['其他资产']?`<div><span>其他资产</span><b>${esc(nativeByOwner('其他资产'))}</b></div>`:''}<footer><span>总计</span><b>¥${compactMoney(dualValues(assetTotal).cny)} / €${compactMoney(dualValues(assetTotal).eur)}</b></footer></button>`;
+    const assetSummary=`<button class="money-asset-summary" data-goto="money" data-tab-target="assets"><header><span>资产总额</span><i>›</i></header><div><span>股市投资</span><b>${esc(nativeByOwner('股市投资'))}</b></div><div><span>德国账户净额</span><b>€${compactMoney(accountStates[0].net)}</b></div><div><span>国内账户净额</span><b>¥${compactMoney(accountStates[1].net)}</b></div><div><span>副业资金</span><b>${esc(nativeByOwner('副业资金'))}</b></div><footer><span>总计</span><b>¥${compactMoney(dualValues(assetTotal).cny)} / €${compactMoney(dualValues(assetTotal).eur)}</b></footer></button>`;
     const cards = [
       ['flows', inc, '本月收入', 'income'],
       ['flows', exp, '本月支出', 'expense'], ['flows', inc-exp, '本月结余', 'balance'],
@@ -1448,7 +1466,7 @@ const App = (function () {
     ].map(([target,value,label,tone]) => `<button class="money-kpi tone-${tone}" data-goto="money" data-tab-target="${target}"><b class="money-dual">${dualMoney(value)}</b><span>${label}</span><i>›</i></button>`).join('');
 
     const assetGroups = {};
-    assets.forEach(r => { const key=r.type||'其他'; assetGroups[key]=(assetGroups[key]||0)+baseAmount(r.amount,r.currency); });
+    assets.filter(r=>!r.accountMigrated).forEach(r => { const key=r.type||'其他'; assetGroups[key]=(assetGroups[key]||0)+baseAmount(r.amount,r.currency); });
     const assetRows = Object.entries(assetGroups).sort((a,b)=>b[1]-a[1]);
     const assetMax = Math.max(1,...assetRows.map(r=>r[1]));
     const assetHtml = assetRows.length ? assetRows.map((r,i)=>moneyBar(r[0],r[1],assetMax,['blue','navy','teal','gray'][i%4],{goto:'assets'})).join('') : '<p class="money-empty">暂无资产记录</p>';
@@ -1473,7 +1491,7 @@ const App = (function () {
     const dots=trend.map((r,i)=>r.has?`<circle cx="${(i/5*100).toFixed(1)}" cy="${(44-(r.value-lo)/range*36).toFixed(1)}" r="1.8"/>`:'').join('');
     const trendHtml=`<div class="money-trend"><svg viewBox="-2 0 104 50" preserveAspectRatio="none"><line x1="0" y1="${(44-(0-lo)/range*36).toFixed(1)}" x2="100" y2="${(44-(0-lo)/range*36).toFixed(1)}" class="zero"/><polyline points="${points}"/>${dots}</svg><div>${trend.map(r=>`<span>${r.label}<b>${r.has?(r.value>=0?'+':'')+bs+compactMoney(r.value):'无数据'}</b></span>`).join('')}</div></div>`;
 
-    const native=`<div class="money-native"><span>原币收入 <b>${esc(nativeMoney(month.filter(r=>r.direction==='收入')))}</b></span><span>原币支出 <b>${esc(nativeMoney(month.filter(r=>r.direction==='支出')))}</b></span><span>原币资产 <b>${esc(nativeMoney(assets))}</b></span></div>`;
+    const native=`<div class="money-native"><span>原币收入 <b>${esc(nativeMoney(month.filter(r=>r.direction==='收入')))}</b></span><span>原币支出 <b>${esc(nativeMoney(month.filter(r=>r.direction==='支出')))}</b></span><span>账户净额 <b>€${compactMoney(accountStates[0].net)} / ¥${compactMoney(accountStates[1].net)}</b></span></div>`;
     return `<div class="money-dashboard"><div class="money-overview-top">${assetSummary}<div class="money-kpis">${cards}</div></div>${native}
       <section><h3>资产构成 <small>按类型</small></h3>${assetHtml}</section>
       <section><h3>本月支出去向</h3>${expenseHtml}</section>
@@ -1483,13 +1501,15 @@ const App = (function () {
   }
 
   function renderMoneyAccounts(tab){
-    const accounts=Store.getList('moneyAssets'),total=accounts.reduce((s,r)=>s+baseAmount(r.amount,r.currency),0),snapshots=Store.getList('moneySnapshots').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,6);
-    const cards=accounts.length?accounts.map(r=>`<article class="account-card"><div><small>${esc(r.type||'账户')} · ${esc(r.currency||'€')}</small><h3>${esc(r.name||'未命名账户')}</h3><b>${esc(r.currency||'€')}${Number(r.amount||0).toFixed(2)}</b><em>${r.updatedAt?`${new Date(r.updatedAt).toLocaleDateString('zh-CN')} 更新`:''}</em></div><span class="app-card-ops"><button data-edit="${r._id}">编辑</button><button class="danger" data-del="${r._id}">删</button></span></article>`).join(''):'<div class="empty-state"><div class="empty-state-icon">💳</div><div class="empty-state-text">添加银行卡、现金、储蓄或投资账户的当前余额</div></div>';
+    const states=allMoneyAccountStates(),assets=Store.getList('moneyAssets').filter(r=>!r.accountMigrated),total=states.reduce((s,r)=>s+baseAmount(r.net,r.currency),0)+assets.reduce((s,r)=>s+baseAmount(r.amount,r.currency),0),snapshots=Store.getList('moneySnapshots').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,6);
+    const regionCards=states.map(r=>`<article class="account-card regional-account"><div><small>${r.icon} ${esc(r.region)} · ${r.currency}</small><h3>净资产 ${r.currency}${Number(r.net).toFixed(2)}</h3><p>银行卡 ${r.currency}${Number(r.bank).toFixed(2)} · 信用卡待还 ${r.currency}${Number(r.debt).toFixed(2)}</p><em>余额基准 + 新增流水自动计算</em></div><button data-edit-money-account="${esc(r.region)}">调整余额</button></article>`).join('');
+    const cards=assets.length?assets.map(r=>`<article class="account-card"><div><small>${esc(r.type||'资产')} · ${esc(r.currency||'€')}</small><h3>${esc(r.name||'未命名资产')}</h3><b>${esc(r.currency||'€')}${Number(r.amount||0).toFixed(2)}</b></div><span class="app-card-ops"><button data-edit="${r._id}">编辑</button><button class="danger" data-del="${r._id}">删</button></span></article>`).join(''):'<div class="empty-hint">股票投资、副业资金等独立资产可通过右上角「+」添加。</div>';
     const history=snapshots.length?`<section class="account-history"><h3>资产历史 <small>最近 6 次快照</small></h3>${snapshots.map(r=>{const val=baseAmount(r.amount,r.currency),dv=dualValues(val);return `<div><span>${esc(r.date||'')}</span><b>€${compactMoney(dv.eur)} / ¥${compactMoney(dv.cny)}</b></div>`;}).join('')}</section>`:'<div class="empty-hint">保存本月快照后，这里会显示资产变化。</div>';
-    return `<section class="account-summary"><div><small>当前总资产</small><strong>${dualMoney(total)}</strong><em>${accounts.length} 个账户 · 余额由你低频更新</em></div><button type="button" id="save-asset-snapshot" ${accounts.length?'':'disabled'}>保存本月快照</button></section><div class="account-list">${cards}</div>${history}`;
+    return `<section class="account-summary"><div><small>当前总资产</small><strong>${dualMoney(total)}</strong><em>两个日常账户随流水变化，其他资产低频更新</em></div><button type="button" id="save-asset-snapshot">保存本月快照</button></section><div class="account-list">${regionCards}${cards}</div>${history}`;
   }
   function bindMoneyAccounts(tab){
-    const save=document.getElementById('save-asset-snapshot');if(!save)return;save.onclick=()=>{const accounts=Store.getList('moneyAssets'),total=accounts.reduce((s,r)=>s+baseAmount(r.amount,r.currency),0),period=todayKey().slice(0,7),old=Store.getList('moneySnapshots').find(r=>(r.period||r.date?.slice(0,7))===period),payload={date:todayKey(),period,amount:total,currency:baseSymbol(),accountCount:accounts.length,note:'由账户与资产自动生成'};if(old){if(!confirm('本月已有快照，是否用当前账户余额更新？'))return;Store.updateRecord('moneySnapshots',old._id,payload);}else Store.addRecord('moneySnapshots',payload);renderContent();};
+    document.querySelectorAll('[data-edit-money-account]').forEach(b=>b.onclick=()=>{const region=b.dataset.editMoneyAccount,state=moneyAccountState(region),rec=Store.getList('moneyAccounts').find(r=>r.region===region);openModal(`调整${region}余额`,`<form id="money-account-form"><div class="shop-book-note"><b>设置当前基准</b><span>保存后，既有流水不会重复计算；之后的新流水会自动改变余额。</span></div><div class="form-row"><label>银行卡余额</label><input id="ma-bank" type="number" step="any" value="${state.bank}"></div><div class="form-row"><label>信用卡待还</label><input id="ma-debt" type="number" min="0" step="any" value="${state.debt}"></div><div class="form-actions"><button type="button" class="btn-secondary" id="ma-cancel">取消</button><button class="btn-primary">保存基准</button></div></form>`);document.getElementById('ma-cancel').onclick=closeModal;document.getElementById('money-account-form').onsubmit=e=>{e.preventDefault();const payload={region,currency:region==='国内账户'?'¥':'€',bankBalance:Number(document.getElementById('ma-bank').value)||0,creditDebt:Math.max(0,Number(document.getElementById('ma-debt').value)||0),startAt:new Date().toISOString()};if(rec)Store.updateRecord('moneyAccounts',rec._id,payload);else Store.addRecord('moneyAccounts',payload);Store.getList('flows').filter(f=>f.accountTracking===true&&f.accountRegion===region).forEach(f=>Store.updateRecord('flows',f._id,{accountTracking:false}));closeModal();renderContent();};});
+    const save=document.getElementById('save-asset-snapshot');if(!save)return;save.onclick=()=>{const assets=Store.getList('moneyAssets').filter(r=>!r.accountMigrated),states=allMoneyAccountStates(),total=states.reduce((s,r)=>s+baseAmount(r.net,r.currency),0)+assets.reduce((s,r)=>s+baseAmount(r.amount,r.currency),0),period=todayKey().slice(0,7),old=Store.getList('moneySnapshots').find(r=>(r.period||r.date?.slice(0,7))===period),payload={date:todayKey(),period,amount:total,currency:baseSymbol(),accountCount:states.length+assets.length,note:'由账户与资产自动生成'};if(old){if(!confirm('本月已有快照，是否用当前账户余额更新？'))return;Store.updateRecord('moneySnapshots',old._id,payload);}else Store.addRecord('moneySnapshots',payload);renderContent();};
   }
 
   function renderMoneyFlows(tab) {
@@ -1821,13 +1841,13 @@ const App = (function () {
     const tk = todayKey();
     const items = [];
     Store.getList({ collection: 'plans' }).filter(r => r.status !== '完成' && (!r.date || planOccurs(r, tk) || (r.date < tk&&(!r.repeat||r.repeat==='不重复')))).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).slice(0, 4).forEach(r =>
-      items.push({ icon: '📋', text: r.title, meta: r.date || '待办' }));
+      items.push({ icon: '📋', text: r.title, meta: r.date || '待办', goto:'discipline', tab:'plans' }));
     Store.getList({ collection: 'todos' }).filter(r => r.status !== '完成' && (!r.due || r.due <= tk)).sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0, 3).forEach(r =>
-      items.push({ icon: '🏢', text: r.item, meta: r.due || '待办' }));
+      items.push({ icon: '🏢', text: r.item, meta: r.due || '待办', goto:'jikui', tab:'todos' }));
     const shoppingItems=Store.getList({collection:'items'}).filter(r=>r.status==='未买');
     if(shoppingItems.length){
       const names=shoppingItems.slice(0,3).map(r=>r.name).filter(Boolean),more=shoppingItems.length>names.length?`等 ${shoppingItems.length} 项`: `${shoppingItems.length} 项待买`;
-      items.push({icon:'🛒',text:`购物清单：${names.join('、')}`,meta:more});
+      items.push({icon:'🛒',text:`购物清单：${names.join('、')}`,meta:more,goto:'life',tab:'items'});
     }
     Store.getList({ collection: 'daily' }).filter(r => r.date === tk && !r.done).slice(0, 3).forEach(r =>
       items.push({ icon: '🏃', text: r.item, meta: (r.duration || '') + '分' }));
@@ -1849,10 +1869,11 @@ const App = (function () {
     upcomingImportantEvents(10).filter(ev=>ev.days<=Math.max(7,parseInt(ev.r.remindDays)||0)).slice(0,3).forEach(ev=>items.push({icon:'🗓️',text:ev.r.name,meta:ev.days===0?'就是今天':ev.days===1?'明天':`还有${ev.days}天`}));
     Store.getList('investHoldings').filter(r=>r.status!=='已清仓'&&r.reviewDate&&daysUntil(r.reviewDate)<=7).slice(0,3).forEach(r=>items.push({icon:'📈',text:`复核 ${r.name} 投资假设`,meta:dueLabel(r.reviewDate)}));
     Store.getList('investChecks').filter(r=>(r.status||'待检查')==='待检查'&&r.date&&daysUntil(r.date)<=Math.max(0,parseInt(r.remindDays)||3)).slice(0,3).forEach(r=>items.push({icon:'🔎',text:r.title,meta:dueLabel(r.date)}));
-    if(new Date().getHours()>=20&&!Store.getList('rigongLogs').some(r=>r.date===tk))items.push({icon:'📖',text:'写下今日回望',meta:'为今天温柔收尾'});
+    if(new Date().getHours()>=20&&!Store.getList('rigongLogs').some(r=>r.date===tk))items.push({icon:'📖',text:'写下今日回望',meta:'为今天温柔收尾',goto:'rigong',tab:'overview'});
     if (!items.length) return `<div class="reminder-empty">今天没有待办，享受当下吧～</div>`;
+    items.forEach(it=>{if(!it.goto){if(it.icon==='📚')Object.assign(it,{goto:'study',tab:'today'});else if(it.icon==='📖')Object.assign(it,{goto:'study',tab:'books'});else if(it.icon==='💳')Object.assign(it,{goto:'money',tab:'subs'});else if(['🔧','🧴'].includes(it.icon))Object.assign(it,{goto:'life',tab:'homeThings'});else if(it.icon==='🌸')Object.assign(it,{goto:'toolbox',tab:'youzi'});else if(it.icon==='🗓️')Object.assign(it,{goto:'life',tab:'events'});else if(['📈','🔎'].includes(it.icon))Object.assign(it,{goto:'invest',tab:it.icon==='📈'?'holdings':'checks'});else if(it.icon==='🏃')Object.assign(it,{goto:'discipline',tab:'fitDaily'});else Object.assign(it,{goto:'rigong',tab:'overview'});}});
     return `<div class="reminder-list">` + items.map(it =>
-      `<div class="reminder-item"><span class="reminder-icon">${esc(it.icon)}</span><span class="reminder-text">${esc(it.text)}</span><small>${esc(it.meta)}</small></div>`
+      `<button type="button" class="reminder-item" data-goto="${esc(it.goto)}" data-tab-target="${esc(it.tab)}"><span class="reminder-icon">${esc(it.icon)}</span><span class="reminder-text">${esc(it.text)}</span><small>${esc(it.meta)} <i>›</i></small></button>`
     ).join('') + `</div>`;
   }
 
@@ -2088,7 +2109,8 @@ const App = (function () {
     { key: 'entryRule', label: '入账规则', type: 'select', options: ['固定日期','当月月末','下月月初'], def: '下月月初' },
     { key: 'nextDate', label: '下次入账日期', type: 'date', required: true },
     { key: 'remindDays', label: '提前提醒（天）', type: 'number', def: 3 },
-    { key: 'account', label: '支付账户', type: 'text' },
+    { key: 'accountRegion', label: '支付账户', type: 'select', options: ['德国账户','国内账户'], def: '德国账户' },
+    { key: 'paymentMethod', label: '支付方式', type: 'select', options: ['借记卡','信用卡'], def: '借记卡' },
     { key: 'enabled', label: '启用提醒', type: 'checkbox', def: true },
     { key: 'note', label: '备注', type: 'text' },
   ] };
@@ -2208,7 +2230,7 @@ const App = (function () {
     const due=bill.nextDate||bill.dueDate||todayKey(),period=due.slice(0,7);
     if(Store.getList('flows').some(r=>r.sourceType==='homeBill'&&r.sourceId===id&&r.billingPeriod===period)){alert('这个账期已经入账');return;}
     const flowTab=MODULE_MAP.money.tabs.find(t=>t.id==='flows'),legacyCategory={'住房':'房租水电','水电能源':'房租水电','通信网络':'订阅','保险':'其他'};
-    openForm(flowTab,null,{account:bill.account||'',currency:bill.currency||'€',direction:'支出',category:legacyCategory[bill.category]||bill.category||'房租水电',categoryDetail:legacyCategory[bill.category]?bill.category:'',budgetStatus:'自动匹配',amount:bill.amount||'',date:todayKey(),note:`${bill.name} · ${period}`},saved=>{
+    openForm(flowTab,null,{transactionType:'支出',accountRegion:bill.accountRegion||'德国账户',paymentMethod:bill.paymentMethod||'借记卡',currency:(bill.accountRegion==='国内账户'?'¥':'€'),category:legacyCategory[bill.category]||bill.category||'房租水电',categoryDetail:legacyCategory[bill.category]?bill.category:'',budgetStatus:'自动匹配',amount:bill.amount||'',date:todayKey(),note:`${bill.name} · ${period}`},saved=>{
       if(saved)Store.updateRecord('flows',saved._id,{sourceType:'homeBill',sourceId:id,billingPeriod:period});
       Store.updateRecord('homeBills',id,{lastBookedPeriod:period,lastBookedAmount:saved?.amount||bill.amount||'',nextDate:addHomeCycle(due,bill.cycle||'每月')});
     });
@@ -2397,6 +2419,15 @@ const App = (function () {
   }
 
   function init() {
+    Store.migrateOnce('regionalMoneyAccountsV1',d=>{
+      const now=new Date().toISOString(),uid=()=>crypto.randomUUID?crypto.randomUUID():'ma'+Date.now()+Math.random();
+      d.collections.moneyAccounts=d.collections.moneyAccounts||[];
+      const assets=d.collections.moneyAssets||[],legacyGerman=assets.filter(r=>!r.deletedAt&&!r.accountMigrated&&(r.owner==='德国账户'||(!r.owner&&(r.currency||'€')==='€'&&/德国|银行卡|账户|debit|giro/i.test(`${r.name||''}${r.type||''}`)))),germanBase=legacyGerman.reduce((s,r)=>s+(Number(r.amount)||0),0);
+      if(!d.collections.moneyAccounts.some(r=>r.region==='德国账户'))d.collections.moneyAccounts.push({_id:uid(),region:'德国账户',currency:'€',bankBalance:germanBase,creditDebt:0,startAt:now,createdAt:now,updatedAt:now,deletedAt:null,schemaVersion:2});
+      if(!d.collections.moneyAccounts.some(r=>r.region==='国内账户'))d.collections.moneyAccounts.push({_id:uid(),region:'国内账户',currency:'¥',bankBalance:0,creditDebt:0,startAt:now,createdAt:now,updatedAt:now,deletedAt:null,schemaVersion:2});
+      legacyGerman.forEach(r=>{r.accountMigrated=true;r.updatedAt=now;});
+      (d.collections.flows||[]).forEach(r=>{if(!r.transactionType)r.transactionType=r.direction==='收入'?'收入':r.direction==='还款'?'信用卡还款':'支出';if(!r.accountRegion)r.accountRegion=(r.currency==='¥'||/国内|人民币/.test(r.account||''))?'国内账户':'德国账户';if(!r.paymentMethod)r.paymentMethod=/信用卡/.test(r.account||'')?'信用卡':'借记卡';if(r.accountTracking==null)r.accountTracking=false;});
+    });
     Store.migrateOnce('learningCyclesV1',d=>{(d.collections.studyTasks||[]).forEach(r=>{if(!r.cycle)r.cycle='不重复';if(!Array.isArray(r.completionDates))r.completionDates=[];});(d.collections.bookLogs||[]).forEach(r=>{if(!r.cycle)r.cycle='不重复';if(!r.status)r.status='读完';if(!Array.isArray(r.completionDates))r.completionDates=r.date?[r.date]:[];});});
     Store.migrateOnce('dietModesV1',d=>{(d.collections.diet||[]).forEach(r=>{if(!r.kind)r.kind='固定减脂餐';if(!r.name)r.name=r.food||'固定减脂餐';});});
     Store.migrateOnce('shoppingListsV1',d=>{
