@@ -1840,9 +1840,10 @@ const App = (function () {
   function buildReminders() {
     const tk = todayKey();
     const items = [];
-    Store.getList({ collection: 'plans' }).filter(r => r.status !== '完成' && (!r.date || planOccurs(r, tk) || (r.date < tk&&(!r.repeat||r.repeat==='不重复')))).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).slice(0, 4).forEach(r =>
+    const isCompleted=r=>r.done===true||['完成','已完成','读完','已买','已结算'].includes(r.status);
+    Store.getList({ collection: 'plans' }).filter(r => !isCompleted(r) && (!r.date || planOccurs(r, tk) || (r.date < tk&&(!r.repeat||r.repeat==='不重复')))).sort((a,b)=>(a.date||'').localeCompare(b.date||'')).slice(0, 4).forEach(r =>
       items.push({ icon: '📋', text: r.title, meta: r.date || '待办', goto:'discipline', tab:'plans' }));
-    Store.getList({ collection: 'todos' }).filter(r => r.status !== '完成' && (!r.due || r.due <= tk)).sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0, 3).forEach(r =>
+    Store.getList({ collection: 'todos' }).filter(r => !isCompleted(r) && (!r.due || r.due <= tk)).sort((a,b)=>(a.due||'').localeCompare(b.due||'')).slice(0, 3).forEach(r =>
       items.push({ icon: '🏢', text: r.item, meta: r.due || '待办', goto:'jikui', tab:'todos' }));
     const shoppingItems=Store.getList({collection:'items'}).filter(r=>r.status==='未买');
     if(shoppingItems.length){
@@ -1860,7 +1861,7 @@ const App = (function () {
     Store.getList({ collection: 'moneySubs' }).filter(r => r.nextDate && daysUntil(r.nextDate) >= 0 && daysUntil(r.nextDate) <= Math.max(7,parseInt(r.remindDays)||0)).sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || '')).slice(0, 2).forEach(r =>
       items.push({ icon: '💳', text: r.name, meta: r.nextDate }));
     if(Store.getList('daily').length && !Store.getList('daily').some(r=>r.date===tk)) items.push({icon:'🏃',text:'运动',meta:'今日未记录'});
-    if(Store.getList('skincare').length && !Store.getList('skincare').some(r=>r.date===tk)) items.push({icon:'🧴',text:'个人护理',meta:'今日未记录'});
+    if(Store.getList('skincare').length && !Store.getList('skincare').some(r=>r.date===tk)) items.push({icon:'🧴',text:'个人护理',meta:'今日未记录',goto:'discipline',tab:'skincare'});
     Store.getList('homeCleanings').filter(r=>r.enabled!==false&&daysUntil(maintenanceDue(r))<=Math.max(7,parseInt(r.remindDays)||0)).sort((a,b)=>daysUntil(maintenanceDue(a))-daysUntil(maintenanceDue(b))).slice(0,2).forEach(r=>items.push({icon:'🔧',text:`${r.name} · ${r.task||'设备养护'}`,meta:dueLabel(maintenanceDue(r))}));
     Store.getList('homeStocks').filter(r=>r.enabled!==false&&((Number(r.count)||0)<=(Number(r.minCount)||0)||daysUntil(stockDue(r))<=Math.max(7,parseInt(r.remindDays)||0))).slice(0,2).forEach(r=>items.push({icon:'🧴',text:r.name,meta:(Number(r.count)||0)<=(Number(r.minCount)||0)?'库存偏低':`检查存量 · ${dueLabel(stockDue(r))}`}));
     Store.getList('homeBills').filter(r=>r.enabled!==false&&daysUntil(r.nextDate||r.dueDate)<=Math.max(3,parseInt(r.remindDays)||0)).sort((a,b)=>daysUntil(a.nextDate||a.dueDate)-daysUntil(b.nextDate||b.dueDate)).slice(0,2).forEach(r=>items.push({icon:'💳',text:`${r.name}待入账`,meta:dueLabel(r.nextDate||r.dueDate)}));
