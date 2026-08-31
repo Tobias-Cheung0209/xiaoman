@@ -539,14 +539,29 @@ const App = (function () {
     const cards=lists.map(list=>{const rows=items.filter(r=>r.listId===list._id),done=rows.filter(r=>r.status==='已买').length;return `<section class="shopping-list-card">
       <header><div><h3>${esc(list.title||'购物清单')}</h3><small>${esc(list.category||'日常采购')} · ${done}/${rows.length} 已买</small></div><button type="button" data-del-shop-list="${list._id}" aria-label="删除清单">×</button></header>
       <div class="shopping-bullets">${rows.length?rows.map(r=>`<div class="shopping-bullet ${r.status==='已买'?'done':''}"><input type="checkbox" aria-label="${esc(r.name)}" data-toggle="${r._id}" data-key="status" data-on="已买" data-off="未买" ${r.status==='已买'?'checked':''}><span>${esc(r.name)}</span><button type="button" data-del-shop-item="${r._id}" aria-label="删除 ${esc(r.name)}">×</button></div>`).join(''):'<div class="shop-simple-empty">还没有物品</div>'}</div>
-      <form class="shopping-bullet-add" data-list-add="${list._id}"><input autocomplete="off" placeholder="添加物品，回车保存" aria-label="给${esc(list.title||'清单')}添加物品"><button>添加</button></form>
+      <form class="shopping-bullet-add" data-list-add="${list._id}"><input type="text" autocomplete="off" enterkeyhint="enter" placeholder="添加物品，回车保存" aria-label="给${esc(list.title||'清单')}添加物品"><button type="submit">添加</button></form>
     </section>`}).join('');
     return `<div class="shopping-lists"><button type="button" class="shopping-list-create" id="shopping-list-create">＋ 新建购物清单</button>${cards||'<div class="empty-state"><div class="empty-state-icon">🛒</div><div class="empty-state-text">先建一张清单，例如“超市买菜”或“dm购物”</div></div>'}</div>`;
   }
 
   function bindShopping(tab) {
     const create=document.getElementById('shopping-list-create');if(create)create.onclick=()=>openShoppingListForm();
-    document.querySelectorAll('[data-list-add]').forEach(form=>form.onsubmit=e=>{e.preventDefault();const input=form.querySelector('input'),name=input.value.trim();if(!name)return;Store.addRecord('items',{listId:form.dataset.listAdd,name,status:'未买'});input.value='';renderContent();});
+    document.querySelectorAll('[data-list-add]').forEach(form=>{
+      const input=form.querySelector('input');
+      // Keep the original input and keyboard alive while appending a row.
+      form.querySelector('button').onpointerdown=e=>{if(document.activeElement===input)e.preventDefault();};
+      input.onkeydown=e=>{if(e.key==='Enter'&&(e.isComposing||e.keyCode===229))e.preventDefault();};
+      form.onsubmit=e=>{
+        e.preventDefault();const name=input.value.trim();if(!name){input.focus({preventScroll:true});return;}
+        const rec=Store.addRecord('items',{listId:form.dataset.listAdd,name,status:'未买'});
+        const card=form.closest('.shopping-list-card'),rows=card.querySelector('.shopping-bullets');
+        rows.querySelector('.shop-simple-empty')?.remove();
+        rows.insertAdjacentHTML('beforeend',`<div class="shopping-bullet"><input type="checkbox" aria-label="${esc(rec.name)}" data-toggle="${rec._id}" data-key="status" data-on="已买" data-off="未买"><span>${esc(rec.name)}</span><button type="button" data-del-shop-item="${rec._id}" aria-label="删除 ${esc(rec.name)}">×</button></div>`);
+        const items=Store.getList('items').filter(r=>r.listId===form.dataset.listAdd),list=Store.getList('shoppingLists').find(r=>r._id===form.dataset.listAdd);
+        card.querySelector('header small').textContent=`${list?.category||'日常采购'} · ${items.filter(r=>r.status==='已买').length}/${items.length} 已买`;
+        input.value='';bindSpecial('life',tab);input.focus({preventScroll:true});
+      };
+    });
     document.querySelectorAll('[data-del-shop-item]').forEach(b=>b.onclick=()=>{if(confirm('删除这个物品？')){Store.deleteRecord('items',b.dataset.delShopItem);renderContent();}});
     document.querySelectorAll('[data-del-shop-list]').forEach(b=>b.onclick=()=>{if(!confirm('删除整张购物清单？'))return;Store.getList('items').filter(r=>r.listId===b.dataset.delShopList).forEach(r=>Store.deleteRecord('items',r._id));Store.deleteRecord('shoppingLists',b.dataset.delShopList);renderContent();});
   }

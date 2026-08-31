@@ -1,6 +1,6 @@
-const CACHE = 'wb-shell-v56';
+const CACHE = 'wb-shell-v57';
 const FILES = [
-  'index.html','css/style.css?v=56','css/app-v2.css?v=56','js/config.js?v=56','js/travel-areas.js?v=56','js/city-geo.js?v=56','js/store.js?v=56','js/topbar.js?v=56','js/app.js?v=56','js/xiaoman.js?v=56','manifest.webmanifest',
+  'index.html','css/style.css?v=54','css/app-v2.css?v=57','js/config.js?v=56','js/travel-areas.js?v=54','js/city-geo.js?v=54','js/store.js?v=54','js/topbar.js?v=54','js/app.js?v=57','js/xiaoman.js?v=54','manifest.webmanifest',
   'images/xiaoman-sleeping.png?v=54','images/xiaoman-rubbing.png?v=54','images/xiaoman-peek.png?v=54','images/china-map.png?v=54','images/world-map.png?v=54',
   'icon.svg?v=54','icon-192.png?v=54','icon-512.png?v=54','apple-touch-icon.png?v=54','startup-1170x2532.png?v=54','startup-1290x2796.png?v=54'
 ];

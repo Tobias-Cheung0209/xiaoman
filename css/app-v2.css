@@ -166,6 +166,14 @@
 .reminder-item small { color: var(--text-3); font-size: 12px; text-align:right;white-space:nowrap; }
 .reminder-empty { color: var(--text-3); font-size: 13px; padding: 8px 0; }
 
+/* iPhone focus zoom: keep editable shopping controls at a readable size. */
+@media (max-width: 768px) {
+  .shopping-list-card .shopping-bullet-add { grid-template-columns:minmax(0,1fr) auto; }
+  .shopping-list-card .shopping-bullet-add input,
+  #shopping-list-form input, #shopping-list-form select { font-size:16px; min-height:44px; }
+  .shopping-list-card .shopping-bullet-add button { min-width:60px; min-height:44px; white-space:nowrap; }
+}
+
 /* 全部板块 */
 .module-grid {
   display: grid;
