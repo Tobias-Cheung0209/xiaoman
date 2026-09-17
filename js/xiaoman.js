@@ -10,7 +10,7 @@ const Xiaoman = (function () {
   const LS_POS_OLD = 'wb_mascot_pos';
 
   let wrap, doll, bubble, menu, panel, panelMask, grid, search, shock, particlesEl;
-  let bubbleTimer = null, wakeTimers = [];
+  let bubbleTimer = null, wakeTimers = [], roamTimer = null, pauseUntil = 0, mascotMode = 'dynamic';
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -97,6 +97,7 @@ const Xiaoman = (function () {
     wrap.classList.remove('xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode', 'xm-speaking');
     hideBubble();
     hidePanel();
+    scheduleRoam();
   }
   function toggle() {
     if (wrap.classList.contains('xm-speaking')) {
@@ -285,6 +286,7 @@ const Xiaoman = (function () {
 
     doll.addEventListener('pointerdown', e => {
       e.preventDefault();
+      clearRoam();
       pressed = true; moved = false; dragging = false;
       downX = e.clientX; downY = e.clientY;
       clearTimeout(timer);
@@ -300,7 +302,7 @@ const Xiaoman = (function () {
       if (!pressed) return;
       pressed = false;
       clearTimeout(timer); timer = null;
-      if (dragging) { dragging = false; clampToSafeViewport(); savePos(); return; }
+      if (dragging) { dragging = false; clampToSafeViewport(); savePos(); scheduleRoam(); return; }
       if (!moved) toggle();
     });
     doll.addEventListener('contextmenu', e => e.preventDefault());
@@ -317,6 +319,18 @@ const Xiaoman = (function () {
     wrap.style.bottom = 'auto';
     clampToSafeViewport();
   }
+  function activityPaused(){const modal=$('modal'),vv=window.visualViewport,keyboard=vv&&vv.height<window.innerHeight*.72;return mascotMode!=='dynamic'||Date.now()<pauseUntil||document.hidden||isAwake()||keyboard||document.body.classList.contains('drawer-open')||(modal&&modal.classList.contains('show'))||/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName||'');}
+  function clearRoam(){clearTimeout(roamTimer);roamTimer=null;wrap?.classList.remove('xm-roaming','xm-hop');}
+  function scheduleRoam(delay){clearTimeout(roamTimer);if(mascotMode!=='dynamic')return;roamTimer=setTimeout(roamOnce,delay||7000+Math.random()*7000);}
+  function roamOnce(){
+    if(activityPaused()){scheduleRoam(5000);return;}
+    const vv=window.visualViewport,inset=safeInsets(),left=(vv?.offsetLeft||0)+inset.left+12,top=(vv?.offsetTop||0)+inset.top+12,right=(vv?.offsetLeft||0)+(vv?.width||innerWidth)-inset.right-12,bottom=(vv?.offsetTop||0)+(vv?.height||innerHeight)-inset.bottom-24;
+    const rect=doll.getBoundingClientRect(),range=innerWidth>820?180:Math.min(96,(vv?.width||innerWidth)*.28),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+    const nx=Math.max(left+rect.width/2,Math.min(right-rect.width/2,cx+(Math.random()-.5)*range*2)),floor=Math.max(top+rect.height/2,Math.min(bottom-rect.height/2,cy+(Math.random()-.42)*70));
+    wrap.classList.add('xm-roaming');if(Math.random()>.55)wrap.classList.add('xm-hop');positionAt(nx,floor);setTimeout(()=>wrap?.classList.remove('xm-hop'),900);scheduleRoam(9000+Math.random()*9000);
+  }
+  function applyMode(mode){mascotMode=['dynamic','idle','hidden'].includes(mode)?mode:'dynamic';clearRoam();wrap.classList.toggle('xm-hidden',mascotMode==='hidden');if(mascotMode==='dynamic')scheduleRoam(5000);else if(mascotMode==='idle')clampToSafeViewport();}
+  function celebrate(){if(!wrap||mascotMode==='hidden')return;spawnParticles(7);wrap.classList.remove('xm-hop');void wrap.offsetWidth;wrap.classList.add('xm-hop');setTimeout(()=>wrap?.classList.remove('xm-hop'),900);}
   function safeInsets() {
     const probe=document.createElement('i');
     probe.style.cssText='position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
@@ -329,6 +343,7 @@ const Xiaoman = (function () {
     if(rect.left<view.left)dx=view.left-rect.left;else if(rect.right>view.right)dx=view.right-rect.right;
     if(rect.top<view.top)dy=view.top-rect.top;else if(rect.bottom>view.bottom)dy=view.bottom-rect.bottom;
     if(dx||dy){wrap.style.left=(host.left+dx)+'px';wrap.style.top=(host.top+dy)+'px';wrap.style.right='auto';wrap.style.bottom='auto';}
+    if(isAwake())fitMenu();if(!bubble.hidden)fitBubble();
   }
   function savePos() {
     const rect=doll.getBoundingClientRect(),vv=window.visualViewport,width=vv?.width||window.innerWidth,height=vv?.height||window.innerHeight,left=vv?.offsetLeft||0,top=vv?.offsetTop||0;
@@ -378,6 +393,9 @@ const Xiaoman = (function () {
     requestAnimationFrame(clampToSafeViewport);
     initDrag();
     bindDismiss();
+    applyMode((typeof Store!=='undefined'&&Store.getSetting)?Store.getSetting('xiaomanMode','dynamic'):'dynamic');
+    const pauseActivity=()=>{pauseUntil=Date.now()+1800;};
+    window.addEventListener('scroll',pauseActivity,{passive:true});document.addEventListener('focusin',pauseActivity);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearRoam();else scheduleRoam(4000);});
     const keepInBounds=()=>requestAnimationFrame(()=>{clampToSafeViewport();savePos();});
     window.addEventListener('resize',keepInBounds);
     window.addEventListener('orientationchange',()=>setTimeout(keepInBounds,220));
@@ -395,5 +413,5 @@ const Xiaoman = (function () {
     // 首页已经完整展示今日提醒，小满不再重复显示容易误解的红点。
   }
 
-  return { init };
+  return { init, applyMode, celebrate };
 })();

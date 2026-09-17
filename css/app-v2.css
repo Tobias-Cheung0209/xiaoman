@@ -623,6 +623,15 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+#xiaoman-wrap.xm-hidden{display:none!important}
+#xiaoman-wrap.xm-roaming{transition:left 3.8s cubic-bezier(.35,.05,.25,1),top 3.8s cubic-bezier(.35,.05,.25,1)}
+@keyframes xm-hop-body{0%,100%{margin-top:0}45%{margin-top:-9px}70%{margin-top:2px}}
+#xiaoman-wrap.xm-hop #xm-doll{animation:xm-hop-body .9s ease-in-out}
+.setting-help{display:block;margin-top:6px;color:var(--text-3);font-size:11px;line-height:1.5}
+.calendar-export-main{margin-right:auto!important;background:rgba(110,184,255,.16)!important;color:var(--work-deep)!important;font-weight:700}
+.agenda-calendar{width:29px;height:29px;border:0;border-radius:9px;background:rgba(110,184,255,.12);color:var(--work-deep);cursor:pointer}.agenda-calendar.exported{background:#e8f7ee;color:#258553}
+.global-agenda-row{grid-template-columns:31px minmax(0,1fr) auto auto}
+.calendar-export-note{padding:12px 14px;border-radius:14px;background:var(--work-light);color:var(--text-2);font-size:12px;line-height:1.6}.calendar-export-options{display:grid;gap:9px;margin-top:13px}.calendar-export-options button{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);text-align:left;cursor:pointer}.calendar-export-options small{color:var(--text-3)}
 /* ---- 小满本体（PNG 三图 + 状态机） ---- */
 #xm-doll {
   position: absolute;
