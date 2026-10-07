@@ -69,6 +69,7 @@ const App = (function () {
   function renderContent() {
     const mod = MODULE_MAP[state.module];
     const root = document.getElementById('content-body');
+    document.body.dataset.view = mod.render === 'home' ? 'home' : 'module';
     root.classList.remove('group-work', 'group-life');
     if (mod.render === 'home') { root.innerHTML = renderHome(); bindHome(root); return; }
     if (mod.render === 'tabs') {
@@ -1805,7 +1806,7 @@ const App = (function () {
     const reminders = buildReminders();
     const tileFor = m => {
       const w = homeWidget(m);
-      return `<div class="module-tile group-${m.group}" data-goto="${m.id}">
+      return `<div class="module-tile group-${m.group}" data-goto="${m.id}" data-module="${m.id}">
         <div class="module-tile-icon">${m.icon}</div>
         <div class="module-tile-name">${esc(m.name)}</div>
         <div class="module-tile-desc">${esc(m.desc || '')}</div>
@@ -2005,7 +2006,7 @@ const App = (function () {
     const modeKey=activeTheme.modeKey||'';
     const xmMode=modeKey?Store.getSetting(modeKey,'dynamic'):'hidden';
     const companionName=typeof ThemeManager!=='undefined'?ThemeManager.companionName(themeId):'小满';
-    const companionBlock=modeKey?`<div class="form-row"><label>${esc(companionName)}陪伴模式</label><select id="set-mascot-mode"><option value="dynamic" ${xmMode==='dynamic'?'selected':''}>动态陪伴</option><option value="idle" ${xmMode==='idle'?'selected':''}>只待机</option><option value="hidden" ${xmMode==='hidden'?'selected':''}>隐藏${esc(companionName)}</option></select><small class="setting-help">动态陪伴只在安全范围内低频活动；输入、滚动和弹窗时自动暂停。</small></div>`:`<div class="theme-concept-note">当前是概念主题：界面配色和背景已启用，专属吉祥物动画素材后续可按同一接口接入。</div>`;
+    const companionBlock=modeKey?`<div class="form-row"><label>${esc(companionName)}陪伴模式</label><select id="set-mascot-mode"><option value="dynamic" ${xmMode==='dynamic'?'selected':''}>动态陪伴</option><option value="idle" ${xmMode==='idle'?'selected':''}>只待机</option><option value="hidden" ${xmMode==='hidden'?'selected':''}>隐藏${esc(companionName)}</option></select><small class="setting-help">动态陪伴只在安全范围内低频活动；输入、滚动和弹窗时自动暂停。</small></div>`:`<div class="theme-concept-note">当前主题已启用专属场景、面板、标题牌、按钮与模块图标。</div>`;
     openModal('设置与备份', `<div class="form-row"><label>昵称</label><input type="text" id="set-name" value="${esc(name)}"></div>
       <div class="form-row"><label>头像</label><div class="avatar-picker"><button type="button" id="avatar-pick" class="avatar-preview" ${avatar?`style="background-image:url(${esc(avatar)})"`:''}>${avatar?'':esc(name.slice(0,1))}</button><span>点击头像，从设备选择图片</span><input type="file" id="set-avatar-file" accept="image/*" hidden><input type="hidden" id="set-avatar" value="${esc(avatar)}"></div></div>
       <div class="form-row"><label>外观与陪伴</label><input type="hidden" id="set-theme" value="${esc(themeId)}">${typeof ThemeManager!=='undefined'?ThemeManager.renderPicker(themeId):''}</div>

@@ -3,14 +3,14 @@ const ThemeManager = (function () {
   const THEMES = [
     { id:'xiaoman', name:'小满', fullName:'小满则盈', desc:'原版蓝粉梦境', icon:'🫧', mascot:'xiaoman', modeKey:'xiaomanMode', color:'#66B6FF' },
     { id:'xmer', name:'Xmer', fullName:'Xmer', desc:'奶油森林与猫猫', icon:'🐱', mascot:'xmer', modeKey:'xmerMode', color:'#75866A', preview:'images/xmer/xmer-hero-perch.png' },
-    { id:'maple-dream', name:'冒险岛梦幻', fullName:'小满则盈 · 冒险岛梦幻', desc:'浮空村落与品克缤', icon:'🌿', mascot:'none', color:'#67B98B', preview:'design-concepts/maplestory-dream-v1.png' },
-    { id:'maple-phantom', name:'冒险岛幻影', fullName:'小满则盈 · 冒险岛幻影', desc:'怪盗幻影与水晶花园', icon:'🎩', mascot:'none', color:'#7567C7', preview:'design-concepts/maplestory-phantom-v2.png' },
-    { id:'maple-kerning', name:'冒险岛废弃都市', fullName:'小满则盈 · 废弃都市', desc:'夜城、钢架与三眼章鱼', icon:'🐙', mascot:'none', color:'#263B61', preview:'design-concepts/maplestory-kerning-city-v3.png' },
-    { id:'maple-ellinia', name:'冒险岛魔法密林', fullName:'小满则盈 · 魔法密林', desc:'巨木、藤蔓与绿色水灵', icon:'🌳', mascot:'none', color:'#3E8C65', preview:'design-concepts/maplestory-ellinia-v4.png' },
-    { id:'maple-perion', name:'冒险岛勇士部落', fullName:'小满则盈 · 勇士部落', desc:'赤岩、图腾与木妖', icon:'🪵', mascot:'none', color:'#A85E3D', preview:'design-concepts/maplestory-perion-v5.png' },
-    { id:'maple-henesys', name:'冒险岛射手村', fullName:'小满则盈 · 射手村', desc:'花田、风车与橙蘑菇', icon:'🍄', mascot:'none', color:'#78A955', preview:'design-concepts/maplestory-henesys-v6.png' },
-    { id:'maple-lith', name:'冒险岛明珠港', fullName:'小满则盈 · 明珠港', desc:'海港、灯塔与蓝蜗牛', icon:'⚓', mascot:'none', color:'#3F9DBB', preview:'design-concepts/maplestory-lith-harbor-v7.png' },
-    { id:'genshin-hutao', name:'原神胡桃', fullName:'小满则盈 · 胡桃', desc:'璃月灯火、梅花与幽灵', icon:'🌸', mascot:'none', color:'#8F353A', preview:'design-concepts/genshin-hutao-v8.png' },
+    { id:'maple-dream', name:'冒险岛梦幻', fullName:'小满则盈 · 冒险岛梦幻', desc:'浮空村落与品克缤', icon:'🌿', mascot:'none', color:'#67B98B', preview:'design-concepts/maplestory-dream-scene-v2.png' },
+    { id:'maple-phantom', name:'冒险岛幻影', fullName:'小满则盈 · 冒险岛幻影', desc:'怪盗幻影与水晶花园', icon:'🎩', mascot:'none', color:'#7567C7', preview:'design-concepts/maplestory-phantom-scene-v2.png' },
+    { id:'maple-kerning', name:'冒险岛废弃都市', fullName:'小满则盈 · 废弃都市', desc:'夜城、钢架与三眼章鱼', icon:'🐙', mascot:'none', color:'#263B61', preview:'design-concepts/maplestory-kerning-city-scene-v2.png' },
+    { id:'maple-ellinia', name:'冒险岛魔法密林', fullName:'小满则盈 · 魔法密林', desc:'巨木、藤蔓与绿色水灵', icon:'🌳', mascot:'none', color:'#3E8C65', preview:'design-concepts/maplestory-ellinia-scene-v2.png' },
+    { id:'maple-perion', name:'冒险岛勇士部落', fullName:'小满则盈 · 勇士部落', desc:'赤岩、图腾与木妖', icon:'🪵', mascot:'none', color:'#A85E3D', preview:'design-concepts/maplestory-perion-scene-v2.png' },
+    { id:'maple-henesys', name:'冒险岛射手村', fullName:'小满则盈 · 射手村', desc:'花田、风车与橙蘑菇', icon:'🍄', mascot:'none', color:'#78A955', preview:'design-concepts/maplestory-henesys-scene-v2.png' },
+    { id:'maple-lith', name:'冒险岛明珠港', fullName:'小满则盈 · 明珠港', desc:'海港、灯塔与蓝蜗牛', icon:'⚓', mascot:'none', color:'#3F9DBB', preview:'design-concepts/maplestory-lith-harbor-scene-v2.png' },
+    { id:'genshin-hutao', name:'原神胡桃', fullName:'小满则盈 · 胡桃', desc:'璃月灯火、梅花与幽灵', icon:'🌸', mascot:'none', color:'#8F353A', preview:'design-concepts/genshin-hutao-scene-v2.png' },
   ];
   const MAP = Object.fromEntries(THEMES.map(t => [t.id, t]));
   let active = null;
@@ -58,6 +58,7 @@ const ThemeManager = (function () {
   function apply(id) {
     active = MAP[id] || MAP.xiaoman;
     document.documentElement.dataset.theme = active.id;
+    document.documentElement.dataset.skin = active.id.startsWith('maple-') || active.id === 'genshin-hutao' ? 'adventure' : 'soft';
     document.documentElement.style.setProperty('--theme-color', active.color);
     document.documentElement.style.setProperty('--theme-art', active.preview ? `url("${assetUrl(active.preview)}")` : 'none');
     document.title = active.fullName;
@@ -84,7 +85,7 @@ const ThemeManager = (function () {
   function renderPicker(selectedId) {
     return `<div class="theme-picker">${THEMES.map(t => `<button type="button" class="theme-choice ${t.id===selectedId?'active':''}" data-theme-choice="${t.id}" aria-pressed="${t.id===selectedId?'true':'false'}" style="--choice-color:${t.color};${t.preview?`--choice-image:url('${assetUrl(t.preview)}')`:''}">
       <span class="theme-choice-preview">${t.preview?'':t.icon}</span>
-      <b>${t.name}</b><small>${t.desc}</small>${t.mascot==='none'?'<em>概念主题</em>':''}
+      <b>${t.name}</b><small>${t.desc}</small>${t.mascot==='none'?'<em>整套皮肤</em>':''}
     </button>`).join('')}</div>`;
   }
 

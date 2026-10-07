@@ -1,6 +1,6 @@
-const CACHE = 'wb-shell-v62';
+const CACHE = 'wb-shell-v68';
 const FILES = [
-  'index.html','css/style.css?v=62','css/app-v2.css?v=62','css/themes.css?v=62','js/config.js?v=62','js/travel-areas.js?v=54','js/city-geo.js?v=54','js/store.js?v=62','js/themes.js?v=62','js/topbar.js?v=62','js/app.js?v=62','js/xiaoman.js?v=62','js/xmer.js?v=62','manifest.webmanifest',
+  'index.html','css/style.css?v=68','css/app-v2.css?v=68','css/themes.css?v=68','js/config.js?v=68','js/travel-areas.js?v=54','js/city-geo.js?v=54','js/store.js?v=68','js/themes.js?v=68','js/topbar.js?v=68','js/app.js?v=68','js/xiaoman.js?v=68','js/xmer.js?v=68','manifest.webmanifest',
   'images/xiaoman-sleeping.png?v=54','images/xiaoman-rubbing.png?v=54','images/xiaoman-peek.png?v=54','images/xmer/xmer-sleeping.png?v=1','images/xmer/xmer-rubbing.png?v=1','images/xmer/xmer-peek.png?v=1','images/xmer/xmer-hero-perch.png?v=1','fonts/ma-shan-zheng.ttf','images/china-map.png?v=54','images/world-map.png?v=54',
   'icon.svg?v=54','icon-192.png?v=54','icon-512.png?v=54','apple-touch-icon.png?v=54','startup-1170x2532.png?v=54','startup-1290x2796.png?v=54'
 ];

@@ -78,3 +78,254 @@ html[data-theme="genshin-hutao"] .hero-card{background:linear-gradient(135deg,#F
   html[data-theme="xmer"] .hero-card{margin-top:78px}.hero-slow{right:146px;top:-64px;font-size:15px;letter-spacing:1px}.hero-accent{right:247px;top:-59px;transform:rotate(-7deg) scale(.76)}.hero-perch-cat{right:37px;top:-87px;width:145px;height:110px}.hero-books{right:-2px;top:-43px;width:52px}.hero-plant{right:-16px;top:-91px;transform:scale(.72)}
   html[data-theme="xmer"] #xiaoman-wrap[data-pose]{width:172px;height:150px}html[data-theme="xmer"] #xiaoman-wrap[data-pose] #xm-doll{width:166px;height:136px}
 }
+
+/* ============================================================
+ * V1–V8 沉浸式整套皮肤
+ * 场景图只承担世界背景；所有面板、木牌、文字与按钮均为真实 UI。
+ * ============================================================ */
+html[data-skin="adventure"]{
+  --skin-panel:#fff3d9;
+  --skin-panel-2:#f8e5bd;
+  --skin-panel-line:#c18b48;
+  --skin-frame:#75421f;
+  --skin-frame-dark:#3f2417;
+  --skin-plaque:linear-gradient(180deg,#9b6132 0%,#75401f 55%,#5d321d 100%);
+  --skin-plaque-edge:#d09a55;
+  --skin-accent:#769a47;
+  --skin-ink:#3c2116;
+  --skin-muted:#80664e;
+  --skin-shadow:0 7px 0 rgba(58,31,17,.22),0 14px 30px rgba(35,24,15,.28);
+  --skin-inner:inset 0 0 0 2px rgba(255,255,255,.55),inset 0 -10px 24px rgba(173,111,51,.08);
+  --skin-top-gap:158px;
+  --radius-xl:16px;--radius-lg:14px;--radius-md:10px;
+  --surface:var(--skin-panel);--surface-2:var(--skin-panel-2);
+  --text:var(--skin-ink);--text-2:#694b35;--text-3:var(--skin-muted);
+  --line:color-mix(in srgb,var(--skin-panel-line) 45%,transparent);
+  --shadow-card:var(--skin-shadow);--shadow-float:var(--skin-shadow)
+}
+
+html[data-theme="maple-dream"]{--skin-frame:#70451f;--skin-frame-dark:#3e2817;--skin-panel-line:#c38a42;--skin-accent:#6ca54b;--skin-plaque:linear-gradient(#9c6534,#71411f 62%,#59331d)}
+html[data-theme="maple-phantom"]{--skin-frame:#72512b;--skin-frame-dark:#312449;--skin-panel-line:#c9a45e;--skin-accent:#6d57b4;--skin-plaque:linear-gradient(180deg,#876530,#60411f 55%,#49301a);--skin-scene-wash:rgba(45,37,79,.40);--skin-shadow:0 7px 0 rgba(50,31,67,.24),0 14px 32px rgba(41,29,66,.30)}
+html[data-theme="maple-kerning"]{--skin-panel:#eee3c9;--skin-panel-2:#ded0b2;--skin-panel-line:#59616a;--skin-frame:#303840;--skin-frame-dark:#171d22;--skin-accent:#e1a12e;--skin-plaque:linear-gradient(180deg,#515b64,#252d35 62%,#171c21);--skin-plaque-edge:#8b9398;--skin-ink:#29261f;--skin-muted:#665f52;--skin-scene-wash:rgba(8,18,30,.56);--skin-inner:inset 0 0 0 2px rgba(255,255,255,.34),inset 0 -12px 24px rgba(54,60,65,.10);--skin-shadow:0 7px 0 rgba(12,18,24,.42),0 15px 34px rgba(4,10,18,.46)}
+html[data-theme="maple-ellinia"]{--skin-frame:#6b4a25;--skin-frame-dark:#31431f;--skin-panel-line:#9b743b;--skin-accent:#4e9c4f;--skin-plaque:linear-gradient(#8b5b2e,#643b1f 65%,#4c2d19);--skin-scene-wash:rgba(24,67,35,.38)}
+html[data-theme="maple-perion"]{--skin-panel:#f5e6c8;--skin-panel-2:#e9d2aa;--skin-frame:#68401f;--skin-frame-dark:#33251a;--skin-panel-line:#8e5e32;--skin-accent:#b14e32;--skin-plaque:linear-gradient(#80522e,#5f371f 62%,#462819);--skin-scene-wash:rgba(97,43,24,.40)}
+html[data-theme="maple-henesys"]{--skin-frame:#71481f;--skin-frame-dark:#385123;--skin-panel-line:#ba833b;--skin-accent:#75a936;--skin-plaque:linear-gradient(#9b6330,#70411e 62%,#553018);--skin-scene-wash:rgba(54,100,37,.34)}
+html[data-theme="maple-lith"]{--skin-frame:#6c4d2c;--skin-frame-dark:#253d4c;--skin-panel-line:#b7874e;--skin-accent:#2d91b7;--skin-plaque:linear-gradient(#8a5e31,#65401f 62%,#49301d);--skin-scene-wash:rgba(14,81,112,.34)}
+html[data-theme="genshin-hutao"]{--skin-panel:#fff0d7;--skin-panel-2:#f5d9b7;--skin-panel-line:#b7653e;--skin-frame:#74321e;--skin-frame-dark:#3e1717;--skin-accent:#d23d2d;--skin-plaque:linear-gradient(#984527,#6f2c1c 58%,#4b1d18);--skin-plaque-edge:#dd8b4f;--skin-ink:#3e1717;--skin-muted:#86594a;--skin-scene-wash:rgba(61,19,24,.50);--skin-shadow:0 7px 0 rgba(70,20,18,.28),0 16px 36px rgba(52,19,28,.36)}
+
+html[data-skin="adventure"] body{
+  color:var(--skin-ink);
+  background:color-mix(in srgb,var(--skin-frame-dark) 78%,#16202b);
+  font-family:"STKaiti","KaiTi","PingFang SC","Microsoft YaHei",sans-serif;
+}
+html[data-skin="adventure"] #bg-decor::before{
+  content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,rgba(12,18,22,.18),transparent 18%,transparent 82%,rgba(12,18,22,.18)),
+    linear-gradient(180deg,transparent 0 26%,rgba(15,20,20,.08) 58%,rgba(15,20,20,.16));
+  z-index:1
+}
+html[data-skin="adventure"] #bg-decor::after{
+  inset:0;opacity:1!important;filter:none;
+  background-image:var(--theme-art);
+  background-position:center top;
+  background-size:min(100%,900px) auto;
+  background-repeat:no-repeat;
+  z-index:0
+}
+html[data-skin="adventure"] #bg-decor .cloud,
+html[data-skin="adventure"] #bg-decor .bubble,
+html[data-skin="adventure"] #bg-decor .star{display:none}
+
+/* 木牌式顶栏，背景场景贯穿状态栏。 */
+html[data-skin="adventure"] #topbar{
+  min-height:92px;padding:calc(env(safe-area-inset-top,0px) + 15px) max(22px,calc((100vw - 860px)/2 + 22px)) 8px;
+  justify-content:space-between;align-items:flex-start;
+  background:transparent;border:0;box-shadow:none;backdrop-filter:none
+}
+html[data-skin="adventure"] #menu-toggle,
+html[data-skin="adventure"] #tb-gear{
+  display:grid!important;place-items:center;width:58px;height:50px;padding:0;
+  border:3px solid var(--skin-frame-dark);border-radius:8px;
+  background:var(--skin-plaque);color:#fff4dc;
+  box-shadow:inset 0 0 0 2px var(--skin-plaque-edge),0 5px 0 rgba(40,20,13,.36),0 8px 15px rgba(20,15,12,.28);
+  font-size:25px;text-shadow:0 2px 1px var(--skin-frame-dark)
+}
+html[data-skin="adventure"] #menu-toggle:active,
+html[data-skin="adventure"] #tb-gear:active{transform:translateY(3px);box-shadow:inset 0 0 0 2px var(--skin-plaque-edge),0 2px 0 rgba(40,20,13,.36)}
+html[data-skin="adventure"] .topbar-app-name{display:none}
+html[data-skin="adventure"] #layout{position:relative;z-index:2}
+html[data-skin="adventure"] #content{padding:0 18px 80px;background:transparent}
+html[data-skin="adventure"] body[data-view="home"] .home-dashboard{padding-top:var(--skin-top-gap);max-width:820px}
+
+/* 羊皮纸欢迎牌。 */
+html[data-skin="adventure"] .hero-card,
+html[data-skin="adventure"] .reminder-card,
+html[data-skin="adventure"] .home-schedule-card,
+html[data-skin="adventure"] .module-grid{
+  position:relative;border:3px solid var(--skin-frame);border-radius:var(--radius-xl);
+  background:
+    radial-gradient(circle at 14% 18%,rgba(177,115,54,.08) 0 1px,transparent 2px),
+    radial-gradient(circle at 82% 72%,rgba(177,115,54,.07) 0 1px,transparent 2px),
+    linear-gradient(145deg,rgba(255,255,255,.42),transparent 35%),
+    var(--skin-panel);
+  background-size:24px 24px,31px 31px,auto,auto;
+  box-shadow:var(--skin-inner),var(--skin-shadow);
+  color:var(--skin-ink)
+}
+html[data-skin="adventure"] .hero-card{padding:24px 26px;margin-bottom:30px;overflow:visible}
+html[data-skin="adventure"] .hero-card::before,
+html[data-skin="adventure"] .reminder-card::before,
+html[data-skin="adventure"] .home-schedule-card::before,
+html[data-skin="adventure"] .module-grid::before{
+  content:"";position:absolute;inset:7px;border:1px solid color-mix(in srgb,var(--skin-panel-line) 60%,transparent);border-radius:10px;pointer-events:none
+}
+html[data-skin="adventure"] .hero-card::after{
+  content:"";position:absolute;inset:-8px;background:
+    radial-gradient(circle at 8px 8px,var(--skin-plaque-edge) 0 3px,var(--skin-frame-dark) 3.5px 5px,transparent 5.5px),
+    radial-gradient(circle at calc(100% - 8px) 8px,var(--skin-plaque-edge) 0 3px,var(--skin-frame-dark) 3.5px 5px,transparent 5.5px),
+    radial-gradient(circle at 8px calc(100% - 8px),var(--skin-plaque-edge) 0 3px,var(--skin-frame-dark) 3.5px 5px,transparent 5.5px),
+    radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),var(--skin-plaque-edge) 0 3px,var(--skin-frame-dark) 3.5px 5px,transparent 5.5px);
+  border-radius:20px;pointer-events:none
+}
+html[data-skin="adventure"] .hero-avatar{display:none}
+html[data-skin="adventure"] .hero-top>div:first-child{gap:0!important}
+html[data-skin="adventure"] .hero-greeting{font-family:"STKaiti","KaiTi",serif;font-size:30px;color:var(--skin-ink);text-shadow:0 1px #fff;margin-bottom:8px}
+html[data-skin="adventure"] .hero-meta{font-size:14px;color:var(--skin-muted)}
+html[data-skin="adventure"] .hero-weather{min-width:135px;padding-left:20px;border-left:1px solid var(--skin-panel-line);color:var(--skin-ink)}
+html[data-skin="adventure"] .hero-weather b{font-size:20px}
+html[data-skin="adventure"] .hero-quote{margin-top:15px;padding:8px 12px;border-radius:8px;background:rgba(255,248,227,.52);color:var(--skin-muted);font-size:12px}
+
+/* 每个栏目都是独立木牌，不再沿用原版普通标题。 */
+html[data-skin="adventure"] .section-title{
+  position:relative;z-index:3;width:max-content;max-width:calc(100% - 14px);
+  min-height:48px;margin:0 0 -9px -4px;padding:8px 24px 8px 18px;
+  border:3px solid var(--skin-frame-dark);border-radius:8px 16px 16px 8px;
+  background:var(--skin-plaque);color:#fff7e7;
+  box-shadow:inset 0 0 0 2px var(--skin-plaque-edge),0 5px 0 rgba(47,24,13,.28),0 9px 20px rgba(31,19,13,.24);
+  font-size:20px;font-weight:800;text-shadow:0 2px 1px var(--skin-frame-dark)
+}
+html[data-skin="adventure"] .section-title::after{
+  content:"";position:absolute;right:-8px;top:50%;width:14px;height:14px;border-radius:50%;
+  background:var(--skin-plaque-edge);box-shadow:inset 0 0 0 3px var(--skin-frame-dark);transform:translateY(-50%)
+}
+html[data-skin="adventure"] .section-title button{margin-left:auto;color:#fff4db!important;text-shadow:0 1px var(--skin-frame-dark);font-family:inherit}
+html[data-skin="adventure"] .reminder-card{padding:24px 25px 18px;margin-bottom:31px;border-top-left-radius:5px}
+html[data-skin="adventure"] .reminder-item{min-height:48px;border-bottom-color:color-mix(in srgb,var(--skin-panel-line) 32%,transparent);font-size:15px}
+html[data-skin="adventure"] .reminder-item small{color:var(--skin-muted)}
+html[data-skin="adventure"] .reminder-item input[type="checkbox"]{border-radius:5px;border-color:var(--skin-frame);background:#fff8e8}
+
+html[data-skin="adventure"] .home-schedule-card{margin-bottom:31px;border-top-left-radius:5px;background:var(--skin-panel)}
+html[data-skin="adventure"] .home-schedule-metrics{padding:18px 14px;border-bottom-color:color-mix(in srgb,var(--skin-panel-line) 42%,transparent)}
+html[data-skin="adventure"] .home-schedule-metrics i{border-right-color:color-mix(in srgb,var(--skin-panel-line) 42%,transparent);color:var(--skin-muted);font-size:12px}
+html[data-skin="adventure"] .home-schedule-metrics b{color:var(--skin-ink);font-size:22px}
+html[data-skin="adventure"] .home-schedule-list{padding:4px 20px 10px}
+html[data-skin="adventure"] .home-schedule-row{border-bottom-color:color-mix(in srgb,var(--skin-panel-line) 28%,transparent)}
+
+/* 首页模块：两列冒险手账按钮。 */
+html[data-skin="adventure"] .module-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+  padding:24px 20px 20px;margin-bottom:31px;border-top-left-radius:5px
+}
+html[data-skin="adventure"] .module-tile,
+html[data-skin="adventure"] .module-tile.group-work,
+html[data-skin="adventure"] .module-tile.group-life{
+  --tile-symbol:"✦";position:relative;display:grid;grid-template-columns:62px minmax(0,1fr) 18px;align-items:center;
+  min-height:94px;padding:12px 13px;border:2px solid color-mix(in srgb,var(--skin-panel-line) 56%,transparent);
+  border-radius:12px;background:linear-gradient(145deg,rgba(255,255,255,.46),rgba(255,238,203,.46));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55);text-align:left;color:var(--skin-ink)
+}
+html[data-skin="adventure"] .module-tile:hover{transform:translateY(-2px);border-color:var(--skin-accent)}
+html[data-skin="adventure"] .module-tile::after{content:"›";grid-column:3;grid-row:1;color:var(--skin-frame);font-size:30px;font-family:serif;text-align:center}
+html[data-skin="adventure"] .module-tile-icon{grid-column:1;grid-row:1;margin:0;font-size:0;text-align:center;filter:drop-shadow(0 4px 2px rgba(77,43,18,.20))}
+html[data-skin="adventure"] .module-tile-icon::before{content:var(--tile-symbol);font-size:42px;line-height:1}
+html[data-skin="adventure"] .module-tile-name{grid-column:2;grid-row:1;font-size:18px;font-weight:800;white-space:nowrap}
+html[data-skin="adventure"] .module-tile-desc,
+html[data-skin="adventure"] .module-tile-body,
+html[data-skin="adventure"] .module-tile-foot{display:none}
+html[data-skin="adventure"] .module-tile[data-module="discipline"]{--tile-symbol:"📜"}
+html[data-skin="adventure"] .module-tile[data-module="kitchen"]{--tile-symbol:"🍲"}
+html[data-skin="adventure"] .module-tile[data-module="jikui"]{--tile-symbol:"🌱"}
+html[data-skin="adventure"] .module-tile[data-module="study"]{--tile-symbol:"📚"}
+html[data-skin="adventure"] .module-tile[data-module="money"]{--tile-symbol:"💰"}
+html[data-skin="adventure"] .module-tile[data-module="life"]{--tile-symbol:"🏮"}
+html[data-skin="adventure"] .module-tile[data-module="rigong"]{--tile-symbol:"📔"}
+html[data-skin="adventure"] .module-tile[data-module="invest"]{--tile-symbol:"🪙"}
+html[data-skin="adventure"] .module-tile[data-module="travel"]{--tile-symbol:"🧭"}
+html[data-skin="adventure"] .module-tile[data-module="fun"]{--tile-symbol:"🎭"}
+html[data-skin="adventure"] .module-tile[data-module="files"]{--tile-symbol:"🗺️"}
+html[data-skin="adventure"] .module-tile[data-module="toolbox"]{--tile-symbol:"🧰"}
+
+/* 模块内页也延续皮肤材质，不在进入模块后突然跳回玻璃风。 */
+html[data-skin="adventure"] body[data-view="module"] #content-body{max-width:900px;margin:18px auto 70px;padding:20px;border:3px solid var(--skin-frame);border-radius:16px;background:color-mix(in srgb,var(--skin-panel) 96%,transparent);box-shadow:var(--skin-inner),var(--skin-shadow)}
+html[data-skin="adventure"] .mod-header{padding:4px 2px 14px;border-bottom:2px solid color-mix(in srgb,var(--skin-panel-line) 48%,transparent)}
+html[data-skin="adventure"] .mod-header-back,
+html[data-skin="adventure"] .mod-actions button{border:2px solid var(--skin-frame);border-radius:8px;background:var(--skin-plaque);color:#fff4dc;box-shadow:inset 0 0 0 1px var(--skin-plaque-edge)}
+html[data-skin="adventure"] .mod-header-info h2{font-family:"STKaiti","KaiTi",serif;color:var(--skin-ink);font-size:24px}
+html[data-skin="adventure"] .tabs{padding:5px;border:1px solid var(--skin-panel-line);border-radius:12px;background:var(--skin-panel-2)}
+html[data-skin="adventure"] .tab-btn.active{background:var(--skin-plaque);color:#fff5df;box-shadow:inset 0 0 0 1px var(--skin-plaque-edge)}
+html[data-skin="adventure"] .app-card,
+html[data-skin="adventure"] .empty-state,
+html[data-skin="adventure"] .habit-section,
+html[data-skin="adventure"] .analysis-panel{border:1px solid var(--skin-panel-line);background:rgba(255,248,229,.78);box-shadow:none}
+html[data-skin="adventure"] #modal{background:rgba(28,18,14,.52);backdrop-filter:blur(4px)}
+html[data-skin="adventure"] #modal-box{border:3px solid var(--skin-frame);border-radius:16px;background:var(--skin-panel);box-shadow:var(--skin-inner),0 22px 70px rgba(20,12,8,.55)}
+html[data-skin="adventure"] #modal-head{border-bottom:2px solid var(--skin-panel-line);background:var(--skin-plaque);color:#fff4dc}
+html[data-skin="adventure"] #modal-title{color:#fff4dc;text-shadow:0 2px var(--skin-frame-dark)}
+html[data-skin="adventure"] #modal-close{color:#fff4dc;background:transparent}
+
+/* 各主题的细节语言。 */
+html[data-theme="maple-phantom"] .section-title::before{content:"✦";margin-right:4px;color:#dfc3ff}
+html[data-theme="maple-kerning"] .hero-card,
+html[data-theme="maple-kerning"] .reminder-card,
+html[data-theme="maple-kerning"] .home-schedule-card,
+html[data-theme="maple-kerning"] .module-grid{border-radius:7px}
+html[data-theme="maple-kerning"] .section-title{border-radius:5px;text-transform:none}
+html[data-theme="maple-kerning"] .section-title::before{content:"●";margin-right:4px;color:#ffc13b;text-shadow:0 0 8px #ff9d00}
+html[data-theme="maple-ellinia"] .section-title::before{content:"🌿";margin-right:3px}
+html[data-theme="maple-perion"] .section-title::before{content:"◆";margin-right:5px;color:#e0b36e}
+html[data-theme="maple-henesys"] .section-title::before{content:"✿";margin-right:5px;color:#ffd2d9}
+html[data-theme="maple-lith"] .section-title::before{content:"⚓";margin-right:5px;color:#dff7ff}
+html[data-theme="genshin-hutao"] .section-title::before{content:"✿";margin-right:5px;color:#ff9b78}
+html[data-theme="genshin-hutao"] .section-title{box-shadow:inset 0 0 0 2px #d27646,0 5px 0 rgba(47,17,18,.34),0 0 18px rgba(255,107,45,.22)}
+
+@media(max-width:820px){
+  html[data-skin="adventure"]{--skin-top-gap:64px}
+  html[data-skin="adventure"] #topbar{min-height:82px;padding-left:18px;padding-right:18px}
+  html[data-skin="adventure"] #menu-toggle,
+  html[data-skin="adventure"] #tb-gear{width:52px;height:46px;font-size:23px}
+  html[data-skin="adventure"] #content{padding:0 12px 70px}
+  html[data-skin="adventure"] .hero-card{padding:20px 18px}
+  html[data-skin="adventure"] .hero-greeting{font-size:25px}
+  html[data-skin="adventure"] .hero-weather{min-width:118px;padding-left:13px}
+  html[data-skin="adventure"] .section-title{font-size:18px;min-height:44px;padding:7px 20px 7px 15px}
+  html[data-skin="adventure"] .reminder-card{padding:22px 17px 14px}
+  html[data-skin="adventure"] .module-grid{padding:22px 12px 14px;gap:8px}
+  html[data-skin="adventure"] .module-tile,
+  html[data-skin="adventure"] .module-tile.group-work,
+  html[data-skin="adventure"] .module-tile.group-life{grid-template-columns:48px minmax(0,1fr) 14px;min-height:80px;padding:9px 8px}
+  html[data-skin="adventure"] .module-tile-icon::before{font-size:34px}
+  html[data-skin="adventure"] .module-tile-name{font-size:15px}
+  html[data-skin="adventure"] body[data-view="module"] #content-body{margin-top:12px;padding:14px}
+}
+
+@media(max-width:420px){
+  html[data-skin="adventure"]{--skin-top-gap:56px}
+  html[data-skin="adventure"] #bg-decor::after{background-size:100% auto}
+  html[data-skin="adventure"] #content{padding-left:9px;padding-right:9px}
+  html[data-skin="adventure"] .hero-card{padding:17px 14px;margin-bottom:27px}
+  html[data-skin="adventure"] .hero-top{gap:8px}
+  html[data-skin="adventure"] .hero-greeting{font-size:21px}
+  html[data-skin="adventure"] .hero-meta{font-size:11px}
+  html[data-skin="adventure"] .hero-weather{min-width:100px;padding-left:9px;font-size:11px}
+  html[data-skin="adventure"] .hero-weather b{font-size:16px}
+  html[data-skin="adventure"] .hero-quote{font-size:11px}
+  html[data-skin="adventure"] .reminder-item{grid-template-columns:24px minmax(0,1fr) auto;gap:7px;font-size:13px}
+  html[data-skin="adventure"] .reminder-item small{max-width:76px}
+  html[data-skin="adventure"] .module-tile,
+  html[data-skin="adventure"] .module-tile.group-work,
+  html[data-skin="adventure"] .module-tile.group-life{grid-template-columns:40px minmax(0,1fr) 12px;min-height:72px;padding:8px 5px}
+  html[data-skin="adventure"] .module-tile-icon::before{font-size:29px}
+  html[data-skin="adventure"] .module-tile-name{font-size:13px}
+  html[data-skin="adventure"] .module-tile::after{font-size:23px}
+}
