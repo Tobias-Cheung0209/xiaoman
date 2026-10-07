@@ -436,7 +436,7 @@ const App = (function () {
           else rec[key] = b.checked ? on : off;
           if (['todos','plans'].includes(colKey.collection||Store.keyOf(colKey)) && key === 'status') rec.completedDate = rec.status === '完成' ? todayKey() : '';
           Store.updateRecord(colKey, rec._id, rec);
-          if((rec.done===true||['完成','已完成','已买'].includes(rec.status))&&typeof Xiaoman!=='undefined'&&Xiaoman.celebrate)Xiaoman.celebrate();
+          if((rec.done===true||['完成','已完成','已买'].includes(rec.status))&&typeof ThemeManager!=='undefined')ThemeManager.celebrate();
           // 心愿清单 ↔ 购物清单 双向联动：购物项标记已买 → 回写心愿状态
           if ((colKey.collection === 'items' || (tab.collection === 'items')) && rec.linkWish && rec.status === '已买') {
             const wish = Store.getList({ collection: 'wishes' }).find(w => w._id === rec.linkWish);
@@ -669,7 +669,7 @@ const App = (function () {
     return{due:started&&r.status!=='已完成'&&r.status!=='读完',count:r.status==='已完成'||r.status==='读完'?1:0,target:1,label:r.date||'单次'};
   }
   function learningDoneOn(r,key){return (r.completionDates||[]).includes(key)||(learningCycle(r)==='不重复'&&['已完成','读完'].includes(r.status)&&r.completedDate===key);}
-  function completeLearningCycle(collection,id,kind){const r=Store.getList(collection).find(x=>x._id===id);if(!r)return;const cycle=learningCycle(r),tk=todayKey();if(cycle==='不重复'){Store.updateRecord(collection,id,{status:kind==='book'?'读完':'已完成',completedDate:tk});}else{const dates=Array.from(new Set([...(Array.isArray(r.completionDates)?r.completionDates:[]),tk])).sort();Store.updateRecord(collection,id,{completionDates:dates,lastCompletedDate:tk});}if(typeof Xiaoman!=='undefined'&&Xiaoman.celebrate)Xiaoman.celebrate();renderContent();}
+  function completeLearningCycle(collection,id,kind){const r=Store.getList(collection).find(x=>x._id===id);if(!r)return;const cycle=learningCycle(r),tk=todayKey();if(cycle==='不重复'){Store.updateRecord(collection,id,{status:kind==='book'?'读完':'已完成',completedDate:tk});}else{const dates=Array.from(new Set([...(Array.isArray(r.completionDates)?r.completionDates:[]),tk])).sort();Store.updateRecord(collection,id,{completionDates:dates,lastCompletedDate:tk});}if(typeof ThemeManager!=='undefined')ThemeManager.celebrate();renderContent();}
   function bindLearningCycles(tab,kind){document.querySelectorAll('[data-learning-complete]').forEach(b=>b.onclick=()=>completeLearningCycle(Store.keyOf(tab),b.dataset.learningComplete,kind));}
   function renderStudyToday(tab) {
     const all = Store.getList(tab);
@@ -1818,6 +1818,7 @@ const App = (function () {
     return `
       <div class="home-dashboard">
         <div class="hero-card">
+          ${typeof ThemeManager!=='undefined'?ThemeManager.renderHeroDecoration():''}
           <div class="hero-top">
             <div style="display:flex;align-items:center;gap:12px;">
               <div class="hero-avatar" ${avatar ? `style="background-image:url(${esc(avatar)})"` : ''}>${avatar ? '' : esc(name.slice(0, 1))}</div>
@@ -1999,10 +2000,16 @@ const App = (function () {
     const name = Store.getSetting('nickname', '我');
     const avatar = Store.getSetting('avatar', '');
     const ms = moneySettings();
-    const xmMode=Store.getSetting('xiaomanMode','dynamic');
+    const activeTheme=typeof ThemeManager!=='undefined'?ThemeManager.current():{id:'xiaoman',mascot:'xiaoman',modeKey:'xiaomanMode'};
+    const themeId=activeTheme.id;
+    const modeKey=activeTheme.modeKey||'';
+    const xmMode=modeKey?Store.getSetting(modeKey,'dynamic'):'hidden';
+    const companionName=typeof ThemeManager!=='undefined'?ThemeManager.companionName(themeId):'小满';
+    const companionBlock=modeKey?`<div class="form-row"><label>${esc(companionName)}陪伴模式</label><select id="set-mascot-mode"><option value="dynamic" ${xmMode==='dynamic'?'selected':''}>动态陪伴</option><option value="idle" ${xmMode==='idle'?'selected':''}>只待机</option><option value="hidden" ${xmMode==='hidden'?'selected':''}>隐藏${esc(companionName)}</option></select><small class="setting-help">动态陪伴只在安全范围内低频活动；输入、滚动和弹窗时自动暂停。</small></div>`:`<div class="theme-concept-note">当前是概念主题：界面配色和背景已启用，专属吉祥物动画素材后续可按同一接口接入。</div>`;
     openModal('设置与备份', `<div class="form-row"><label>昵称</label><input type="text" id="set-name" value="${esc(name)}"></div>
       <div class="form-row"><label>头像</label><div class="avatar-picker"><button type="button" id="avatar-pick" class="avatar-preview" ${avatar?`style="background-image:url(${esc(avatar)})"`:''}>${avatar?'':esc(name.slice(0,1))}</button><span>点击头像，从设备选择图片</span><input type="file" id="set-avatar-file" accept="image/*" hidden><input type="hidden" id="set-avatar" value="${esc(avatar)}"></div></div>
-      <div class="form-row"><label>小满陪伴模式</label><select id="set-xiaoman-mode"><option value="dynamic" ${xmMode==='dynamic'?'selected':''}>动态陪伴</option><option value="idle" ${xmMode==='idle'?'selected':''}>只待机</option><option value="hidden" ${xmMode==='hidden'?'selected':''}>隐藏小满</option></select><small class="setting-help">动态陪伴只在安全范围内低频活动；输入、滚动和弹窗时自动暂停。</small></div>
+      <div class="form-row"><label>外观与陪伴</label><input type="hidden" id="set-theme" value="${esc(themeId)}">${typeof ThemeManager!=='undefined'?ThemeManager.renderPicker(themeId):''}</div>
+      ${companionBlock}
       <div class="backup-block"><div class="backup-subtitle">资金基准币种与手动汇率（1 单位币种 = 多少 EUR）</div><div class="rate-grid"><label>基准<select id="money-base"><option ${ms.base==='€'?'selected':''}>€</option><option ${ms.base==='$'?'selected':''}>$</option><option ${ms.base==='¥'?'selected':''}>¥</option></select></label><label>USD→EUR<input id="rate-usd" type="number" step="any" value="${ms.rates['$']||0.92}"></label><label>CNY→EUR<input id="rate-cny" type="number" step="any" value="${ms.rates['¥']||0.13}"></label></div></div>
       <div class="backup-block">
         <div class="backup-subtitle">JSON 备份（按记录修改时间合并，不整库覆盖）</div>
@@ -2020,19 +2027,24 @@ const App = (function () {
     document.getElementById('btn-import').onchange = importBackup;
     const avatarFile=document.getElementById('set-avatar-file'), avatarPick=document.getElementById('avatar-pick'); avatarPick.onclick=()=>avatarFile.click();
     avatarFile.onchange=()=>{const f=avatarFile.files[0];if(f)resizeImage(f,512,data=>{document.getElementById('set-avatar').value=data;avatarPick.style.backgroundImage=`url(${data})`;avatarPick.textContent='';});};
+    document.querySelectorAll('[data-theme-choice]').forEach(b=>b.onclick=()=>{document.getElementById('set-theme').value=b.dataset.themeChoice;document.querySelectorAll('[data-theme-choice]').forEach(x=>{const on=x===b;x.classList.toggle('active',on);x.setAttribute('aria-pressed',on?'true':'false');});});
     document.getElementById('settings-cancel').onclick = closeModal;
     document.getElementById('settings-confirm').onclick = () => {
+      const nextTheme=document.getElementById('set-theme').value;
       Store.setSetting('nickname', document.getElementById('set-name').value);
       Store.setSetting('avatar', document.getElementById('set-avatar').value);
-      Store.setSetting('xiaomanMode',document.getElementById('set-xiaoman-mode').value);if(typeof Xiaoman!=='undefined'&&Xiaoman.applyMode)Xiaoman.applyMode(document.getElementById('set-xiaoman-mode').value);
+      Store.setSetting('theme',nextTheme);
+      const modeInput=document.getElementById('set-mascot-mode'),nextModeKey=typeof ThemeManager!=='undefined'?ThemeManager.modeKeyFor(nextTheme):'xiaomanMode';
+      if(modeInput&&nextModeKey)Store.setSetting(nextModeKey,modeInput.value);
       Store.setSetting('moneySettings',{base:document.getElementById('money-base').value,rates:{'€':1,'$':parseFloat(document.getElementById('rate-usd').value)||0.92,'¥':parseFloat(document.getElementById('rate-cny').value)||0.13}});
       Topbar.renderProfile();
       closeModal();
-      renderContent();
+      if(nextTheme!==themeId)location.reload();else{if(modeInput&&typeof ThemeManager!=='undefined')ThemeManager.applyMode(modeInput.value);renderContent();}
     };
   }
   function openQuickAdd() {
-    openModal('小满 · 快捷新建', `<div class="quick-menu"><button data-quick="plans">📝 记待办</button><button data-quick="flows">💶 记一笔收支</button><button data-quick="daily">🏃 记运动打卡</button><button data-quick="skincare">🧴 记护理</button><button data-quick="stockLog">📈 写投资复盘</button></div>`);
+    const companion=typeof ThemeManager!=='undefined'?ThemeManager.companionName(ThemeManager.current().id):'小满';
+    openModal(`${companion||'主题'} · 快捷新建`, `<div class="quick-menu"><button data-quick="plans">📝 记待办</button><button data-quick="flows">💶 记一笔收支</button><button data-quick="daily">🏃 记运动打卡</button><button data-quick="skincare">🧴 记护理</button><button data-quick="stockLog">📈 写投资复盘</button></div>`);
     const targets={plans:['discipline','plans'],flows:['money','flows'],daily:['discipline','fitDaily'],skincare:['discipline','skincare'],stockLog:['invest','logs']};
     document.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{const [m,t]=targets[b.dataset.quick],mod=MODULE_MAP[m],tab=mod.tabs.find(x=>x.id===t);closeModal();openForm(tab,null,{date:todayKey()});});
   }
