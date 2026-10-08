@@ -871,7 +871,7 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 /* 菜单下方小尾巴（双层） */
 .xm-menu::after {
   content: '';
-  position: absolute; right: 20px; bottom: -8px;
+  position: absolute; right: var(--xm-menu-tail-right, 20px); bottom: -8px;
   width: 14px; height: 14px;
   background: var(--surface);
   border-right: 1px solid rgba(255,200,210,.4);
@@ -880,7 +880,7 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 }
 .xm-menu::before {
   content: '';
-  position: absolute; right: 26px; bottom: -16px;
+  position: absolute; right: calc(var(--xm-menu-tail-right, 20px) + 6px); bottom: -16px;
   width: 8px; height: 8px;
   background: var(--surface);
   border-right: 1px solid rgba(255,200,210,.4);
@@ -896,7 +896,7 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 .xm-menu-item:hover { background: rgba(120,180,255,.10); }
 .xm-menu-item:active { background: rgba(255,154,174,.20); }
 /* 上方空间不足 → 菜单挪到小满下方展开，尾巴朝上 */
-.xm-menu.below { bottom: auto; top: calc(100% + 6px); transform-origin: 90% 0; }
+.xm-menu.below { bottom: auto; transform-origin: 90% 0; }
 .xm-menu.below::after {
   bottom: auto; top: -8px;
   border-right: none; border-bottom: none;

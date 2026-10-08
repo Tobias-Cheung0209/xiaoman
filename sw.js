@@ -1,6 +1,6 @@
-const CACHE = 'wb-shell-v73';
+const CACHE = 'wb-shell-v77';
 const FILES = [
-  'index.html','css/style.css?v=73','css/app-v2.css?v=73','css/themes.css?v=73','js/config.js?v=73','js/travel-areas.js?v=54','js/city-geo.js?v=54','js/store.js?v=73','js/themes.js?v=73','js/topbar.js?v=73','js/app.js?v=73','js/xiaoman.js?v=73','js/xmer.js?v=73','manifest.webmanifest',
+  'index.html','css/style.css?v=77','css/app-v2.css?v=77','css/themes.css?v=77','js/config.js?v=77','js/travel-areas.js?v=54','js/city-geo.js?v=54','js/store.js?v=77','js/themes.js?v=77','js/topbar.js?v=77','js/app.js?v=77','js/xiaoman.js?v=77','js/xmer.js?v=77','manifest.webmanifest',
   'images/xiaoman-sleeping.png?v=54','images/xiaoman-rubbing.png?v=54','images/xiaoman-peek.png?v=54','images/xmer/xmer-sleeping.png?v=1','images/xmer/xmer-rubbing.png?v=1','images/xmer/xmer-peek.png?v=1','images/xmer/xmer-idle.png?v=1','images/xmer/xmer-hero-perch.png?v=1','design-concepts/mascot-v4-green-slime-final.png','fonts/ma-shan-zheng.ttf','images/china-map.png?v=54','images/world-map.png?v=54',
   'icon.svg?v=54','icon-192.png?v=54','icon-512.png?v=54','apple-touch-icon.png?v=54','startup-1170x2532.png?v=54','startup-1290x2796.png?v=54'
 ];

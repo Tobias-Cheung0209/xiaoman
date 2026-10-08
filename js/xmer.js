@@ -130,7 +130,8 @@ const XmerMascot = (function () {
         if (!wrap.classList.contains('xm-rubbing')) return;
         wrap.classList.remove('xm-rubbing');
         wrap.classList.add('xm-open');
-        fitMenu();                     // 进入展开态时测量避让
+        fitMenu();                     // 先完成首帧定位
+        wakeTimers.push(setTimeout(fitMenu, 450)); // 本体上移过渡结束后按最终轮廓复测
         clickFx();
       }, wakeRoute === 'yawn' ? 850 : 500));
     }, 450));
@@ -230,16 +231,35 @@ const XmerMascot = (function () {
   function fitMenu() {
     if (!menu) return;
     menu.classList.remove('below');
+    menu.style.removeProperty('left');
     menu.style.removeProperty('right');
-    // 上方空间不足 → 切换到小满下方展开
-    const dTop = doll.getBoundingClientRect().top;
+    menu.style.removeProperty('top');
+    menu.style.removeProperty('bottom');
+    menu.style.removeProperty('--xm-menu-tail-right');
+    const dRect = doll.getBoundingClientRect();
+    const wRect = wrap.getBoundingClientRect();
     const mH = menu.offsetHeight || 190;
-    if (dTop < mH + 16) menu.classList.add('below');
-    // 水平：贴左缘时右移，保证完整可见
     const mW = menu.offsetWidth || 142;
-    const wR = wrap.getBoundingClientRect();
-    const leftEdge = wR.right - 6 - mW;   // 默认 right:6px
-    if (leftEdge < 8) menu.style.right = (6 - (8 - leftEdge)) + 'px';
+    const vv = window.visualViewport;
+    const viewLeft = vv?.offsetLeft || 0;
+    const viewTop = vv?.offsetTop || 0;
+    const viewWidth = vv?.width || window.innerWidth;
+    const viewHeight = vv?.height || window.innerHeight;
+    const gap = 28; // 预留动作图切换时的轮廓伸展空间，避免边缘擦碰菜单
+    const safeTop = viewTop + 8;
+    const safeBottom = viewTop + viewHeight - 8;
+    const roomAbove = dRect.top - mH - gap >= safeTop;
+    const roomBelow = dRect.bottom + mH + gap <= safeBottom;
+    const placeBelow = !roomAbove && roomBelow;
+    menu.classList.toggle('below', placeBelow);
+    if (placeBelow) menu.style.top = (dRect.bottom - wRect.top + gap) + 'px';
+    else menu.style.bottom = (wRect.bottom - dRect.top + gap) + 'px';
+    const dollCenter = dRect.left + dRect.width / 2;
+    const idealLeft = dollCenter - (mW - 24);
+    const left = Math.max(viewLeft + 8, Math.min(viewLeft + viewWidth - mW - 8, idealLeft));
+    menu.style.left = (left - wRect.left) + 'px';
+    const tailRight = Math.max(18, Math.min(mW - 18, left + mW - dollCenter));
+    menu.style.setProperty('--xm-menu-tail-right', tailRight + 'px');
   }
   function fitBubble() {
     if (!bubble) return;
@@ -500,6 +520,7 @@ const XmerMascot = (function () {
     window.addEventListener('resize',keepInBounds);
     window.addEventListener('orientationchange',()=>setTimeout(keepInBounds,220));
     if(window.visualViewport){window.visualViewport.addEventListener('resize',keepInBounds);window.visualViewport.addEventListener('scroll',keepInBounds);}
+    doll.addEventListener('transitionend', e => { if (e.propertyName === 'transform' && isAwake()) fitMenu(); });
 
     menu.querySelectorAll('.xm-menu-item').forEach(b => {
       b.onclick = () => runAction(b.dataset.act);

@@ -92,8 +92,8 @@ html[data-theme="genshin-yae"] #topbar{background:rgba(255,242,232,.9);border-bo
 html[data-theme="genshin-yae"] .hero-card{background:linear-gradient(135deg,#F0D7E5,#FFF2DF 52%,#E7BDD2);border:1px solid rgba(125,55,91,.18)}
 
 /* 角色主题使用更大的浮动立绘和专属“待机 → 反应 → 邀请”动作，不沿用睡醒旋转。 */
-html[data-theme^="genshin-"] #xiaoman-wrap{width:190px;height:210px}
-html[data-theme^="genshin-"] #xm-doll{width:180px;height:180px;bottom:-4px}
+html[data-theme^="genshin-"] #xiaoman-wrap,html[data-theme="maple-phantom"] #xiaoman-wrap{width:190px;height:210px}
+html[data-theme^="genshin-"] #xm-doll,html[data-theme="maple-phantom"] #xm-doll{width:180px;height:180px;bottom:-4px}
 html[data-mascot-flow="character"] #xiaoman-wrap.xm-waking .xm-img-sleep{opacity:0;transform:scale(.88) translateY(-5px)}
 html[data-mascot-flow="character"] #xiaoman-wrap.xm-waking .xm-img-rubbing{opacity:1;transform:scale(1.04) rotate(2deg);transition-delay:.12s}
 html[data-mascot-flow="character"] #xiaoman-wrap.xm-rubbing .xm-img-rubbing{animation:character-react .42s cubic-bezier(.34,1.56,.64,1);transform-origin:50% 78%}
@@ -110,8 +110,8 @@ html[data-mascot-flow="character"] #xiaoman-wrap.xm-open .xm-img-peek{opacity:1;
 @media(max-width:480px){
   html[data-theme="xmer"] .hero-card{margin-top:78px}.hero-slow{right:146px;top:-64px;font-size:15px;letter-spacing:1px}.hero-accent{right:247px;top:-59px;transform:rotate(-7deg) scale(.76)}.hero-perch-cat{right:37px;top:-87px;width:145px;height:110px}.hero-books{right:-2px;top:-43px;width:52px}.hero-plant{right:-16px;top:-91px;transform:scale(.72)}
   html[data-theme="xmer"] #xiaoman-wrap[data-pose]{width:172px;height:150px}html[data-theme="xmer"] #xiaoman-wrap[data-pose] #xm-doll{width:166px;height:136px}
-  html[data-theme^="genshin-"] #xiaoman-wrap{width:158px;height:174px}
-  html[data-theme^="genshin-"] #xm-doll{width:150px;height:150px;bottom:-3px}
+  html[data-theme^="genshin-"] #xiaoman-wrap,html[data-theme="maple-phantom"] #xiaoman-wrap{width:158px;height:174px}
+  html[data-theme^="genshin-"] #xm-doll,html[data-theme="maple-phantom"] #xm-doll{width:150px;height:150px;bottom:-3px}
 }
 
 /* ============================================================
