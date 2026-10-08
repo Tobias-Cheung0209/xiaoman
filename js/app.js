@@ -38,7 +38,7 @@ const App = (function () {
     const nav = document.getElementById('sidebar-nav');
     nav.innerHTML = MODULES.map(m => `
       <button class="nav-item group-${m.group}" data-mod="${m.id}">
-        <span class="nav-icon">${m.icon}</span>
+        <span class="nav-icon">${typeof ThemeManager!=='undefined'?ThemeManager.iconFor(m.id,m.icon):m.icon}</span>
         <span class="nav-label">${esc(m.name)}</span>
       </button>`).join('');
     nav.querySelectorAll('.nav-item').forEach(b => {
@@ -1807,7 +1807,7 @@ const App = (function () {
     const tileFor = m => {
       const w = homeWidget(m);
       return `<div class="module-tile group-${m.group}" data-goto="${m.id}" data-module="${m.id}">
-        <div class="module-tile-icon">${m.icon}</div>
+        <div class="module-tile-icon">${typeof ThemeManager!=='undefined'?ThemeManager.iconFor(m.id,m.icon):m.icon}</div>
         <div class="module-tile-name">${esc(m.name)}</div>
         <div class="module-tile-desc">${esc(m.desc || '')}</div>
         <div class="module-tile-body">${w.body}</div>

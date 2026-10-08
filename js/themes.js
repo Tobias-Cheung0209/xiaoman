@@ -1,16 +1,16 @@
 /* 多主题注册表：公共功能只维护一份，主题仅负责视觉与陪伴角色。 */
 const ThemeManager = (function () {
   const THEMES = [
-    { id:'xiaoman', name:'小满', fullName:'小满则盈', desc:'原版蓝粉梦境', icon:'🫧', mascot:'xiaoman', modeKey:'xiaomanMode', color:'#66B6FF' },
-    { id:'xmer', name:'Xmer', fullName:'Xmer', desc:'奶油森林与猫猫', icon:'🐱', mascot:'xmer', modeKey:'xmerMode', color:'#75866A', preview:'images/xmer/xmer-hero-perch.png' },
-    { id:'maple-dream', name:'冒险岛梦幻', fullName:'小满则盈 · 冒险岛梦幻', desc:'浮空村落与品克缤', icon:'🌿', mascot:'none', color:'#67B98B', preview:'design-concepts/maplestory-dream-scene-v2.png' },
-    { id:'maple-phantom', name:'冒险岛幻影', fullName:'小满则盈 · 冒险岛幻影', desc:'怪盗幻影与水晶花园', icon:'🎩', mascot:'none', color:'#7567C7', preview:'design-concepts/maplestory-phantom-scene-v2.png' },
-    { id:'maple-kerning', name:'冒险岛废弃都市', fullName:'小满则盈 · 废弃都市', desc:'夜城、钢架与三眼章鱼', icon:'🐙', mascot:'none', color:'#263B61', preview:'design-concepts/maplestory-kerning-city-scene-v2.png' },
-    { id:'maple-ellinia', name:'冒险岛魔法密林', fullName:'小满则盈 · 魔法密林', desc:'巨木、藤蔓与绿色水灵', icon:'🌳', mascot:'none', color:'#3E8C65', preview:'design-concepts/maplestory-ellinia-scene-v2.png' },
-    { id:'maple-perion', name:'冒险岛勇士部落', fullName:'小满则盈 · 勇士部落', desc:'赤岩、图腾与木妖', icon:'🪵', mascot:'none', color:'#A85E3D', preview:'design-concepts/maplestory-perion-scene-v2.png' },
-    { id:'maple-henesys', name:'冒险岛射手村', fullName:'小满则盈 · 射手村', desc:'花田、风车与橙蘑菇', icon:'🍄', mascot:'none', color:'#78A955', preview:'design-concepts/maplestory-henesys-scene-v2.png' },
-    { id:'maple-lith', name:'冒险岛明珠港', fullName:'小满则盈 · 明珠港', desc:'海港、灯塔与蓝蜗牛', icon:'⚓', mascot:'none', color:'#3F9DBB', preview:'design-concepts/maplestory-lith-harbor-scene-v2.png' },
-    { id:'genshin-hutao', name:'原神胡桃', fullName:'小满则盈 · 胡桃', desc:'璃月灯火、梅花与幽灵', icon:'🌸', mascot:'none', color:'#8F353A', preview:'design-concepts/genshin-hutao-scene-v2.png' },
+    { id:'xiaoman', name:'小满', fullName:'小满则盈', desc:'原版蓝粉梦境', icon:'🫧', mascot:'xiaoman', companion:'小满', modeKey:'xiaomanMode', color:'#66B6FF', mascotThumb:'images/xiaoman-peek.png', navIcons:{home:'🏠',settings:'⚙️'} },
+    { id:'xmer', name:'Xmer', fullName:'Xmer', desc:'奶油森林与猫猫', icon:'🐱', mascot:'xmer', companion:'猫猫', modeKey:'xmerMode', color:'#75866A', preview:'images/xmer/xmer-hero-perch.png', mascotThumb:'images/xmer/xmer-idle.png', navIcons:{home:'🏡',settings:'🌿'} },
+    { id:'maple-dream', name:'冒险岛梦幻', fullName:'小满则盈 · 冒险岛梦幻', desc:'浮空村落与品克缤', icon:'🎧', mascot:'xiaoman', companion:'品克缤', modeKey:'xiaomanMode', color:'#67B98B', preview:'design-concepts/maplestory-dream-scene-v2.png', navIcons:{home:'🏡',settings:'🍃'}, moduleIcons:{discipline:'📜',kitchen:'🧁',jikui:'🌱',study:'📚',money:'💎',life:'🌼',rigong:'📔',invest:'🪙',travel:'🗺️',fun:'🎈',files:'🧺',toolbox:'🧰'} },
+    { id:'maple-phantom', name:'冒险岛幻影', fullName:'小满则盈 · 冒险岛幻影', desc:'怪盗幻影与水晶花园', icon:'🎩', mascot:'xiaoman', companion:'怪盗幻影', modeKey:'xiaomanMode', color:'#7567C7', preview:'design-concepts/maplestory-phantom-scene-v2.png', navIcons:{home:'🃏',settings:'⚙️'}, moduleIcons:{discipline:'🃏',kitchen:'☕',jikui:'💠',study:'📖',money:'💰',life:'🎭',rigong:'✒️',invest:'🔮',travel:'🧭',fun:'🎩',files:'🗂️',toolbox:'🛠️'} },
+    { id:'maple-kerning', name:'冒险岛废弃都市', fullName:'小满则盈 · 废弃都市', desc:'夜城、钢架与三眼章鱼', icon:'🐙', mascot:'xiaoman', companion:'三眼章鱼', modeKey:'xiaomanMode', color:'#263B61', preview:'design-concepts/maplestory-kerning-city-scene-v2.png', mascotThumb:'design-concepts/mascot-v3-three-eyed-octopus.png', mascotAssets:{sleep:'design-concepts/mascot-v3-three-eyed-octopus.png',rub:'design-concepts/mascot-v3-three-eyed-octopus.png',peek:'design-concepts/mascot-v3-three-eyed-octopus.png'}, navIcons:{home:'🚇',settings:'🔧'}, moduleIcons:{discipline:'📋',kitchen:'🥫',jikui:'🚧',study:'💾',money:'💵',life:'💡',rigong:'🗒️',invest:'📟',travel:'🚇',fun:'🎧',files:'🗄️',toolbox:'🧰'} },
+    { id:'maple-ellinia', name:'冒险岛魔法密林', fullName:'小满则盈 · 魔法密林', desc:'巨木、藤蔓与绿色水灵', icon:'🟢', mascot:'xiaoman', companion:'绿水灵', modeKey:'xiaomanMode', color:'#3E8C65', preview:'design-concepts/maplestory-ellinia-scene-v2.png', mascotThumb:'design-concepts/mascot-v4-green-slime-final.png', mascotAssets:{sleep:'design-concepts/mascot-v4-green-slime-final.png',rub:'design-concepts/mascot-v4-green-slime-final.png',peek:'design-concepts/mascot-v4-green-slime-final.png'}, navIcons:{home:'🌳',settings:'🪄'}, moduleIcons:{discipline:'🍃',kitchen:'🍵',jikui:'🌱',study:'📗',money:'💚',life:'🪷',rigong:'📜',invest:'🔮',travel:'🧚',fun:'✨',files:'🍂',toolbox:'🧪'} },
+    { id:'maple-perion', name:'冒险岛勇士部落', fullName:'小满则盈 · 勇士部落', desc:'赤岩、图腾与木妖', icon:'🪵', mascot:'xiaoman', companion:'木妖', modeKey:'xiaomanMode', color:'#A85E3D', preview:'design-concepts/maplestory-perion-scene-v2.png', mascotThumb:'design-concepts/mascot-v5-stump.png', mascotAssets:{sleep:'design-concepts/mascot-v5-stump.png',rub:'design-concepts/mascot-v5-stump.png',peek:'design-concepts/mascot-v5-stump.png'}, navIcons:{home:'🗿',settings:'🔨'}, moduleIcons:{discipline:'📜',kitchen:'🔥',jikui:'🌵',study:'🪨',money:'🪙',life:'🏕️',rigong:'🪶',invest:'💎',travel:'🧭',fun:'🥁',files:'🗺️',toolbox:'🪓'} },
+    { id:'maple-henesys', name:'冒险岛射手村', fullName:'小满则盈 · 射手村', desc:'花田、风车与花蘑菇', icon:'🍄', mascot:'xiaoman', companion:'花蘑菇', modeKey:'xiaomanMode', color:'#78A955', preview:'design-concepts/maplestory-henesys-scene-v2.png', mascotThumb:'design-concepts/mascot-v6-flower-mushroom.png', mascotAssets:{sleep:'design-concepts/mascot-v6-flower-mushroom.png',rub:'design-concepts/mascot-v6-flower-mushroom.png',peek:'design-concepts/mascot-v6-flower-mushroom.png'}, navIcons:{home:'🍄',settings:'🎯'}, moduleIcons:{discipline:'🎯',kitchen:'🥧',jikui:'🌱',study:'📚',money:'🧺',life:'🌻',rigong:'📔',invest:'🍀',travel:'🏹',fun:'🪁',files:'📮',toolbox:'🧰'} },
+    { id:'maple-lith', name:'冒险岛明珠港', fullName:'小满则盈 · 明珠港', desc:'海港、灯塔与蓝蜗牛', icon:'🐌', mascot:'xiaoman', companion:'蓝蜗牛', modeKey:'xiaomanMode', color:'#3F9DBB', preview:'design-concepts/maplestory-lith-harbor-scene-v2.png', mascotThumb:'design-concepts/mascot-v7-blue-snail.png', mascotAssets:{sleep:'design-concepts/mascot-v7-blue-snail.png',rub:'design-concepts/mascot-v7-blue-snail.png',peek:'design-concepts/mascot-v7-blue-snail.png'}, navIcons:{home:'⚓',settings:'🧭'}, moduleIcons:{discipline:'📋',kitchen:'🐟',jikui:'🌱',study:'📘',money:'🪙',life:'🛟',rigong:'📓',invest:'⚓',travel:'⛵',fun:'🐚',files:'🗺️',toolbox:'🧰'} },
+    { id:'genshin-hutao', name:'原神胡桃', fullName:'小满则盈 · 胡桃', desc:'璃月灯火、梅花与幽灵', icon:'👻', mascot:'xiaoman', companion:'小胡桃', modeKey:'xiaomanMode', color:'#8F353A', preview:'design-concepts/genshin-hutao-scene-v2.png', mascotThumb:'design-concepts/mascot-v8-hutao.png', mascotAssets:{sleep:'design-concepts/mascot-v8-hutao.png',rub:'design-concepts/mascot-v8-hutao.png',peek:'design-concepts/mascot-v8-hutao.png'}, navIcons:{home:'🏮',settings:'🌸'}, moduleIcons:{discipline:'📜',kitchen:'🍲',jikui:'🦋',study:'📕',money:'💰',life:'🏮',rigong:'📔',invest:'🧿',travel:'🧭',fun:'👻',files:'🗂️',toolbox:'🪄'} },
   ];
   const MAP = Object.fromEntries(THEMES.map(t => [t.id, t]));
   let active = null;
@@ -66,8 +66,12 @@ const ThemeManager = (function () {
     setLabel('.dh-title', active.fullName);
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.content = active.color;
+    const homeButton = document.getElementById('menu-toggle');
+    const settingsButton = document.getElementById('tb-gear');
+    if (homeButton) homeButton.textContent = active.navIcons?.home || '🏠';
+    if (settingsButton) settingsButton.textContent = active.navIcons?.settings || '⚙️';
     const doll = document.getElementById('xm-doll');
-    if (doll) doll.setAttribute('aria-label', active.mascot === 'xmer' ? 'Xmer 猫猫吉祥物' : '小满吉祥物');
+    if (doll) doll.setAttribute('aria-label', `${active.companion || '小满'}吉祥物`);
     return active;
   }
 
@@ -83,16 +87,20 @@ const ThemeManager = (function () {
   }
 
   function renderPicker(selectedId) {
-    return `<div class="theme-picker">${THEMES.map(t => `<button type="button" class="theme-choice ${t.id===selectedId?'active':''}" data-theme-choice="${t.id}" aria-pressed="${t.id===selectedId?'true':'false'}" style="--choice-color:${t.color};${t.preview?`--choice-image:url('${assetUrl(t.preview)}')`:''}">
-      <span class="theme-choice-preview">${t.preview?'':t.icon}</span>
-      <b>${t.name}</b><small>${t.desc}</small>${t.mascot==='none'?'<em>整套皮肤</em>':''}
+    return `<div class="theme-picker">${THEMES.map(t => `<button type="button" class="theme-choice ${t.id===selectedId?'active':''}" data-theme-choice="${t.id}" aria-pressed="${t.id===selectedId?'true':'false'}" style="--choice-color:${t.color}">
+      <span class="theme-choice-preview">${t.mascotThumb?`<img src="${assetUrl(t.mascotThumb)}" alt="${t.companion||t.name}">`:`<i>${t.icon}</i>`}</span>
+      <b>${t.name}</b><small>${t.desc}</small>
     </button>`).join('')}</div>`;
   }
 
   function modeKeyFor(id) { return (MAP[id] || MAP.xiaoman).modeKey || ''; }
   function companionName(id) {
     const t = MAP[id] || current();
-    return t.mascot === 'xmer' ? '猫猫' : t.mascot === 'xiaoman' ? '小满' : '';
+    return t.companion || (t.mascot === 'xmer' ? '猫猫' : '小满');
+  }
+
+  function iconFor(moduleId, fallback) {
+    return current().moduleIcons?.[moduleId] || fallback;
   }
 
   function initMascot() {
@@ -103,6 +111,10 @@ const ThemeManager = (function () {
       sleep.alt = rub.alt = peek.alt = 'Xmer 猫猫';
       XmerMascot.init();
     } else if (t.mascot === 'xiaoman' && typeof Xiaoman !== 'undefined') {
+      const sleep=document.getElementById('xm-img-sleep'),rub=document.getElementById('xm-img-rubbing'),peek=document.getElementById('xm-img-peek');
+      const assets=t.mascotAssets||{};
+      sleep.src=assetUrl(assets.sleep||'images/xiaoman-sleeping.png');rub.src=assetUrl(assets.rub||'images/xiaoman-rubbing.png');peek.src=assetUrl(assets.peek||'images/xiaoman-peek.png');
+      sleep.alt=rub.alt=peek.alt=t.companion||'小满';
       Xiaoman.init();
     } else if (wrap) {
       wrap.classList.add('xm-hidden');
@@ -126,5 +138,5 @@ const ThemeManager = (function () {
     apply(Store.getSetting('theme', 'xiaoman'));
   }
 
-  return { init, apply, current, renderHeroDecoration, renderPicker, modeKeyFor, companionName, initMascot, applyMode, celebrate, themes:THEMES };
+  return { init, apply, current, renderHeroDecoration, renderPicker, modeKeyFor, companionName, iconFor, initMascot, applyMode, celebrate, themes:THEMES };
 })();
