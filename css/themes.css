@@ -13,8 +13,8 @@
 .theme-concept-note{margin:9px 0 0;color:var(--text-3);font-size:11px;line-height:1.5}
 
 #bg-decor::after{content:"";position:absolute;inset:-12px;background-image:linear-gradient(var(--theme-wash,transparent),var(--theme-wash,transparent)),var(--theme-art);background-position:center top;background-size:cover;background-repeat:no-repeat;opacity:0;filter:saturate(.9) blur(2px);transition:opacity .3s}
-html[data-theme^="maple-"] #bg-decor::after,html[data-theme="genshin-hutao"] #bg-decor::after{opacity:.18}
-html[data-theme^="maple-"] .cloud,html[data-theme^="maple-"] .bubble,html[data-theme="genshin-hutao"] .cloud,html[data-theme="genshin-hutao"] .bubble{opacity:.22}
+html[data-theme^="maple-"] #bg-decor::after,html[data-theme^="genshin-"] #bg-decor::after{opacity:.18}
+html[data-theme^="maple-"] .cloud,html[data-theme^="maple-"] .bubble,html[data-theme^="genshin-"] .cloud,html[data-theme^="genshin-"] .bubble{opacity:.22}
 
 html[data-theme="xmer"]{
   --work:#7F9272;--work-soft:#DCE5D6;--work-light:#F0F4EC;--work-deep:#5F7054;
@@ -70,6 +70,26 @@ html[data-theme="genshin-hutao"]{
 html[data-theme="genshin-hutao"] body{background:linear-gradient(180deg,#6E3C4C,#E8C7A2)}
 html[data-theme="genshin-hutao"] #topbar{background:rgba(255,248,234,.91);border-bottom-color:rgba(125,69,56,.18)}
 html[data-theme="genshin-hutao"] .hero-card{background:linear-gradient(135deg,#F1D6C6,#FFF2D9 52%,#E8BDB5);border:1px solid rgba(125,69,56,.15)}
+html[data-theme="genshin-ayaka"]{
+  --work:#6F91CF;--work-deep:#466AAB;--work-soft:#D9E5F7;--work-light:#F0F5FD;
+  --life:#D78FAE;--life-deep:#A75E7F;--life-soft:#F4DDE7;--life-light:#FCF1F5;
+  --surface:#F8F5ED;--surface-2:#E9EFF8;--text:#263A61;--text-2:#5E7197;--text-3:#8A9BBC;--line:rgba(71,101,157,.20);
+  --card-work:linear-gradient(155deg,rgba(247,250,255,.96),rgba(214,228,249,.91));--card-life:linear-gradient(155deg,rgba(255,248,246,.96),rgba(239,218,231,.9));
+  --sidebar-bg:linear-gradient(180deg,rgba(244,248,255,.96),rgba(246,232,241,.94));--theme-wash:rgba(207,222,247,.32)
+}
+html[data-theme="genshin-ayaka"] body{background:linear-gradient(180deg,#91B7E0,#EBDDE9)}
+html[data-theme="genshin-ayaka"] #topbar{background:rgba(247,249,253,.9);border-bottom-color:rgba(71,101,157,.2)}
+html[data-theme="genshin-ayaka"] .hero-card{background:linear-gradient(135deg,#E3ECFA,#FFF9EE 52%,#EFDCE7);border:1px solid rgba(71,101,157,.18)}
+html[data-theme="genshin-yae"]{
+  --work:#B34E83;--work-deep:#7C2F5A;--work-soft:#EACBDB;--work-light:#F8EAF1;
+  --life:#D5A054;--life-deep:#996B2D;--life-soft:#F2DFC0;--life-light:#FCF3E3;
+  --surface:#FFF2E4;--surface-2:#EBD8E4;--text:#48223B;--text-2:#78566B;--text-3:#A38496;--line:rgba(125,55,91,.20);
+  --card-work:linear-gradient(155deg,rgba(255,242,239,.96),rgba(235,201,219,.91));--card-life:linear-gradient(155deg,rgba(255,246,228,.96),rgba(238,210,202,.9));
+  --sidebar-bg:linear-gradient(180deg,rgba(255,241,239,.96),rgba(232,215,232,.94));--theme-wash:rgba(71,30,76,.30)
+}
+html[data-theme="genshin-yae"] body{background:linear-gradient(180deg,#5A315F,#D889A8)}
+html[data-theme="genshin-yae"] #topbar{background:rgba(255,242,232,.9);border-bottom-color:rgba(125,55,91,.22)}
+html[data-theme="genshin-yae"] .hero-card{background:linear-gradient(135deg,#F0D7E5,#FFF2DF 52%,#E7BDD2);border:1px solid rgba(125,55,91,.18)}
 
 @media(max-width:820px){
   .theme-picker{grid-template-columns:1fr}
@@ -82,7 +102,7 @@ html[data-theme="genshin-hutao"] .hero-card{background:linear-gradient(135deg,#F
 }
 
 /* ============================================================
- * V1–V8 沉浸式整套皮肤
+ * V1–V10 沉浸式整套皮肤
  * 场景图只承担世界背景；所有面板、木牌、文字与按钮均为真实 UI。
  * ============================================================ */
 html[data-skin="adventure"]{
@@ -115,6 +135,8 @@ html[data-theme="maple-perion"]{--skin-panel:#f5e6c8;--skin-panel-2:#e9d2aa;--sk
 html[data-theme="maple-henesys"]{--skin-frame:#71481f;--skin-frame-dark:#385123;--skin-panel-line:#ba833b;--skin-accent:#75a936;--skin-plaque:linear-gradient(#9b6330,#70411e 62%,#553018);--skin-scene-wash:rgba(54,100,37,.34)}
 html[data-theme="maple-lith"]{--skin-frame:#6c4d2c;--skin-frame-dark:#253d4c;--skin-panel-line:#b7874e;--skin-accent:#2d91b7;--skin-plaque:linear-gradient(#8a5e31,#65401f 62%,#49301d);--skin-scene-wash:rgba(14,81,112,.34)}
 html[data-theme="genshin-hutao"]{--skin-panel:#fff0d7;--skin-panel-2:#f5d9b7;--skin-panel-line:#b7653e;--skin-frame:#74321e;--skin-frame-dark:#3e1717;--skin-accent:#d23d2d;--skin-plaque:linear-gradient(#984527,#6f2c1c 58%,#4b1d18);--skin-plaque-edge:#dd8b4f;--skin-ink:#3e1717;--skin-muted:#86594a;--skin-scene-wash:rgba(61,19,24,.50);--skin-shadow:0 7px 0 rgba(70,20,18,.28),0 16px 36px rgba(52,19,28,.36)}
+html[data-theme="genshin-ayaka"]{--skin-panel:#f7f4ed;--skin-panel-2:#e7eef9;--skin-panel-line:#6e8fc9;--skin-frame:#45649e;--skin-frame-dark:#263d6b;--skin-accent:#85afe8;--skin-plaque:linear-gradient(#779ad5,#526fae 58%,#324b82);--skin-plaque-edge:#dcc27a;--skin-ink:#263a61;--skin-muted:#60769e;--skin-scene-wash:rgba(45,76,138,.30);--skin-shadow:0 7px 0 rgba(38,61,107,.24),0 16px 36px rgba(35,52,92,.32)}
+html[data-theme="genshin-yae"]{--skin-panel:#fff0e2;--skin-panel-2:#ead5e2;--skin-panel-line:#a8537f;--skin-frame:#7c3159;--skin-frame-dark:#421d3b;--skin-accent:#d76da6;--skin-plaque:linear-gradient(#a84b7b,#7c315c 58%,#51213f);--skin-plaque-edge:#d8ac70;--skin-ink:#4a2038;--skin-muted:#865b71;--skin-scene-wash:rgba(55,24,69,.42);--skin-shadow:0 7px 0 rgba(66,29,59,.26),0 16px 36px rgba(49,20,54,.38)}
 
 html[data-skin="adventure"] body{
   color:var(--skin-ink);
@@ -279,6 +301,10 @@ html[data-theme="maple-henesys"] .section-title::before{content:"✿";margin-rig
 html[data-theme="maple-lith"] .section-title::before{content:"⚓";margin-right:5px;color:#dff7ff}
 html[data-theme="genshin-hutao"] .section-title::before{content:"✿";margin-right:5px;color:#ff9b78}
 html[data-theme="genshin-hutao"] .section-title{box-shadow:inset 0 0 0 2px #d27646,0 5px 0 rgba(47,17,18,.34),0 0 18px rgba(255,107,45,.22)}
+html[data-theme="genshin-ayaka"] .section-title::before{content:"❄";margin-right:5px;color:#dff3ff}
+html[data-theme="genshin-ayaka"] .section-title{box-shadow:inset 0 0 0 2px #a8c7ef,0 5px 0 rgba(32,55,99,.3),0 0 18px rgba(155,207,255,.25)}
+html[data-theme="genshin-yae"] .section-title::before{content:"✿";margin-right:5px;color:#ffc0dc}
+html[data-theme="genshin-yae"] .section-title{box-shadow:inset 0 0 0 2px #d98aaf,0 5px 0 rgba(55,22,49,.34),0 0 18px rgba(255,128,185,.24)}
 
 @media(max-width:820px){
   html[data-skin="adventure"]{--skin-top-gap:64px}
