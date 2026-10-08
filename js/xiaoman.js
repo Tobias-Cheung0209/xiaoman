@@ -197,14 +197,35 @@ const Xiaoman = (function () {
   function fitBubble() {
     if (!bubble) return;
     bubble.classList.remove('below');
+    bubble.style.removeProperty('left');
     bubble.style.removeProperty('right');
-    const dTop = doll.getBoundingClientRect().top;
+    bubble.style.removeProperty('top');
+    bubble.style.removeProperty('bottom');
+    bubble.style.removeProperty('--xm-tail-right');
+    const dRect = doll.getBoundingClientRect();
+    const wRect = wrap.getBoundingClientRect();
     const bH = bubble.offsetHeight || 64;
-    if (dTop < bH + 18) bubble.classList.add('below');
     const bW = bubble.offsetWidth || 180;
-    const wR = wrap.getBoundingClientRect();
-    const leftEdge = wR.right - 12 - bW;  // 默认 right:12px
-    if (leftEdge < 8) bubble.style.right = (12 - (8 - leftEdge)) + 'px';
+    const vv = window.visualViewport;
+    const viewLeft = vv?.offsetLeft || 0;
+    const viewTop = vv?.offsetTop || 0;
+    const viewWidth = vv?.width || window.innerWidth;
+    const viewHeight = vv?.height || window.innerHeight;
+    const gap = 14;
+    const safeTop = viewTop + 8;
+    const safeBottom = viewTop + viewHeight - 8;
+    const roomAbove = dRect.top - bH - gap >= safeTop;
+    const roomBelow = dRect.bottom + bH + gap <= safeBottom;
+    const placeBelow = !roomAbove && roomBelow;
+    bubble.classList.toggle('below', placeBelow);
+    if (placeBelow) bubble.style.top = (dRect.bottom - wRect.top + gap) + 'px';
+    else bubble.style.bottom = (wRect.bottom - dRect.top + gap) + 'px';
+    const dollCenter = dRect.left + dRect.width / 2;
+    const idealLeft = dollCenter - (bW - 28);
+    const left = Math.max(viewLeft + 8, Math.min(viewLeft + viewWidth - bW - 8, idealLeft));
+    bubble.style.left = (left - wRect.left) + 'px';
+    const tailRight = Math.max(18, Math.min(bW - 18, left + bW - dollCenter));
+    bubble.style.setProperty('--xm-tail-right', tailRight + 'px');
   }
 
   /* ---------------- 全部模块面板（v15 居中弹窗） ---------------- */

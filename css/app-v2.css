@@ -808,7 +808,7 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 }
 .xm-bubble::after {
   content: '';
-  position: absolute; right: 24px; bottom: -8px;
+  position: absolute; right: var(--xm-tail-right, 24px); bottom: -8px;
   width: 14px; height: 14px;
   background: var(--surface);
   border-right: 1px solid rgba(255,200,210,.4);
@@ -817,7 +817,7 @@ body.drawer-open #xiaoman-wrap { display: none !important; }
 }
 .xm-bubble::before {
   content: '';
-  position: absolute; right: 28px; bottom: -16px;
+  position: absolute; right: calc(var(--xm-tail-right, 24px) + 4px); bottom: -16px;
   width: 8px; height: 8px;
   background: var(--surface);
   border-right: 1px solid rgba(255,200,210,.4);
