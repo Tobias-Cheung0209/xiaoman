@@ -1,8 +1,9 @@
 /* ============================================================
- * 小满吉祥物 V5.0：起身揉眼动画（3 图时序）+ 居中弹窗 + 保持醒着
+ * 小满吉祥物 V5.1：三图交互时序 + 居中弹窗 + 保持展开
  * 状态机：idle ↔ waking → rubbing → open
  *  - 待机：睡觉图（趴着闭眼），呼吸 + 偶尔轻晃
- *  - 点击：起身(sleep 缩旋转消失) → 揉眼(rubbing 摇) → 探头(peek)+菜单
+ *  - 小满/地图吉祥物：睡姿 → 醒来反应 → 展开菜单
+ *  - 角色吉祥物：角色待机 → 专属点击反应 → 邀请姿势+菜单
  *  - 保持醒着：say/modules/settings 不立刻 close；只有选具体模块/填表/dismiss 才睡
  * ============================================================ */
 const Xiaoman = (function () {
@@ -67,25 +68,28 @@ const Xiaoman = (function () {
     wakeTimers = [];
   }
   function startWake() {
+    const characterFlow = document.documentElement.dataset.mascotFlow === 'character';
+    const firstDelay = characterFlow ? 280 : 450;
+    const reactionDelay = characterFlow ? 420 : 500;
     clearWakeTimers();
     hideBubble();
     hidePanel();
     wrap.classList.remove('xm-idle', 'xm-waking', 'xm-rubbing', 'xm-open', 'xm-panel-mode', 'xm-speaking');
     wrap.classList.add('xm-waking');
-    // 阶段 1：起身（sleep 缩旋转消失 → rubbing 出现）~450ms
+    // 阶段 1：普通主题起身；角色主题切换到专属点击反应。
     wakeTimers.push(setTimeout(() => {
       if (!wrap.classList.contains('xm-waking')) return;
       wrap.classList.remove('xm-waking');
       wrap.classList.add('xm-rubbing');
-      // 阶段 2：揉眼（rubbing 摇两下）~500ms
+      // 阶段 2：普通主题揉眼；角色主题完成动作后切到邀请姿势。
       wakeTimers.push(setTimeout(() => {
         if (!wrap.classList.contains('xm-rubbing')) return;
         wrap.classList.remove('xm-rubbing');
         wrap.classList.add('xm-open');
         fitMenu();                     // 进入展开态时测量避让
         clickFx();
-      }, 500));
-    }, 450));
+      }, reactionDelay));
+    }, firstDelay));
   }
   function open() {
     if (isAwake()) return;
